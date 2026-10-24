@@ -1,0 +1,39 @@
+sequenceDiagram
+  autonumber
+  participant J as Judge / demo driver
+  participant API as Settle API
+  participant AG as Settle Agent
+  participant V as Venue Merchant
+  participant PL as PaymentLedger
+  participant MGR as Manager phone
+
+  rect rgba(255,95,0,0.08)
+  Note over J,PL: Over-cap attempt rejected (POST /demo/ap4m/over-cap/:tabId)
+  J->>API: probe: charge cap + 1
+  API->>V: invoice for (cap − redeemed + 1)
+  AG->>V: GET resource
+  V-->>AG: 402 amount > remaining cap
+  AG-->>API: refused before signing: "price exceeds the Channel cap"
+  API->>PL: redeemVoucher(cumulative = cap + 1) signed anyway
+  PL-->>API: rejected: "redeemed must never exceed cap"
+  API-->>J: ap4m.rejected {agentRefused, ledgerRefused}
+  end
+
+  rect rgba(235,0,27,0.06)
+  Note over J,PL: Unverified agent rejected (POST /demo/ap4m/unverified-agent/:tabId)
+  J->>API: probe: impostor wallet signs a Voucher
+  API->>V: PAYMENT-SIGNATURE from the impostor
+  V->>PL: redeemVoucher
+  PL-->>V: signer is not the Channel's KYA-registered Agent
+  V-->>API: 401 BAD_SIGNATURE
+  end
+
+  rect rgba(247,158,27,0.08)
+  Note over J,MGR: $900 bottle on a low-spend member (hard rule before the LLM)
+  J->>API: exit tab with the $900 bottle
+  API->>API: rules: total > 3× typical → hold (no Voucher signed)
+  API-->>MGR: tab.held (reason)
+  MGR->>API: POST /tabs/:id/approve
+  API->>AG: pay within mandate + cap (tip trimmed to the escrow)
+  AG->>V: x402 Voucher → redeemed → settled 10 RLUSD
+  end

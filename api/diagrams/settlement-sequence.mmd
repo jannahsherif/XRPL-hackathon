@@ -1,0 +1,41 @@
+sequenceDiagram
+  autonumber
+  participant POS as Fake POS / Staff UI
+  participant API as Settle API (Fargate)
+  participant L as Ledger module (Alex)
+  participant X as XRPL Testnet
+  participant M as Member phone
+  participant A as Settlement agent (AgentCore)
+  participant MGR as Manager phone
+
+  POS->>API: POST /tabs {memberId}
+  API->>L: openTab({memberId, allowance})
+  L->>X: EscrowCreate (RLUSD/TUSD allowance)
+  X-->>L: escrowSeq, txHash
+  API-->>POS: tab.opened (SSE, explorer link)
+  POS->>API: POST /tabs/:id/items ×5
+  API-->>POS: tab.item_added (SSE, headroom)
+
+  POS->>API: POST /tabs/:id/exit (Simulate exit)
+  API-->>M: tab.exit_detected + member.push (countdown)
+  par grace period (10 s in DEMO)
+    API-->>M: tab.grace_tick (every 1 s)
+    M->>API: POST /tabs/:id/tip {pct} (optional)
+  and decision during grace
+    API->>API: hard rules (item > allowance, total > 3× typical)
+    API->>A: InvokeAgentRuntime {tab, member, policy}
+    A-->>API: {action, tipPct, reason}
+  end
+
+  API-->>POS: agent.decision (SSE)
+  alt action = settle | split
+    API->>L: settleTab({tab, amount, tipAmount})
+    L->>X: EscrowFinish → venue, Payment remainder → member
+    X-->>L: finishTxHash, refundTxHash
+    API-->>POS: tab.settled + metrics.updated (float counter drops)
+  else action = hold
+    API-->>MGR: tab.held (reason)
+    MGR->>API: POST /tabs/:id/approve
+    API->>L: settleTab(...)
+    API-->>POS: tab.settled + metrics.updated
+  end

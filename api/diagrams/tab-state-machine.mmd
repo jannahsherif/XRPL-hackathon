@@ -1,0 +1,19 @@
+stateDiagram-v2
+  [*] --> open: POST /tabs (EscrowCreate)
+  open --> ordering: first item
+  open --> exit_detected: POST /exit
+  ordering --> exit_detected: POST /exit
+  exit_detected --> grace: member.push, timer starts
+  grace --> reconciling: timer expires
+  reconciling --> settled: settle / split (EscrowFinish)
+  reconciling --> held: hold (rules or agent) / ledger error
+  open --> held: dispute
+  ordering --> held: dispute
+  grace --> held: dispute
+  held --> reconciling: POST /approve
+  held --> closed_manually: POST /reject (escrow returned)
+  open --> closed_manually: POST /close
+  ordering --> closed_manually: POST /close
+  grace --> closed_manually: POST /close
+  settled --> [*]
+  closed_manually --> [*]

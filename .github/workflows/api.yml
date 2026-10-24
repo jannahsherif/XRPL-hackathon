@@ -1,0 +1,150 @@
+name: api
+
+# Tests run on every PR and push. AWS deploys happen ONLY when a GitHub
+# Release is published: a pre-release deploys dev, a full release deploys prod.
+on:
+  pull_request:
+    paths: ["api/**", "ledger/**", ".github/workflows/api.yml"]
+  push:
+    branches: [main, liam-v1]
+    paths: ["api/**", "ledger/**", ".github/workflows/api.yml"]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            ledger/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Install the ledger module (integration tests load ledger/src)
+        working-directory: ledger
+        run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Unit, service, HTTP and SSE tests (with coverage thresholds)
+        run: npm run test:coverage
+      - run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Agent tests (pytest)
+        run: |
+          pip install --quiet -r agent/requirements-dev.txt
+          python -m pytest -q -p no:cacheprovider agent/tests
+      - name: Lint CloudFormation and the agent
+        run: |
+          pip install --quiet cfn-lint
+          cfn-lint infra/*.yaml
+          python -m py_compile agent/main.py
+
+  deploy:
+    needs: test
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    # Pre-release -> dev, full release -> prod.
+    environment: ${{ github.event.release.prerelease && 'dev' || 'prod' }}
+    concurrency:
+      group: settle-deploy-${{ github.event.release.prerelease && 'dev' || 'prod' }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      STAGE: ${{ github.event.release.prerelease && 'dev' || 'prod' }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+      MODEL_ID: ${{ vars.MODEL_ID || 'anthropic.claude-opus-5-5' }}
+      LEDGER_MODE: ${{ vars.LEDGER_MODE || 'stub' }}
+      DEMO: ${{ vars.DEMO || '1' }}
+      CORS_ORIGIN: ${{ vars.CORS_ORIGIN || '*' }}
+      AP4M_NETWORK: ${{ vars.AP4M_NETWORK || 'simulated' }}
+      INTENT_MODE: ${{ vars.INTENT_MODE || 'on' }}
+      # The release tag (e.g. v0.2.0) names the agent zip and the image.
+      VERSION: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Check configuration
+        run: |
+          test -n "${{ vars.AWS_DEPLOY_ROLE_ARN }}" || { echo "::error::Set the AWS_DEPLOY_ROLE_ARN variable (bootstrap stack output)"; exit 1; }
+          test -n "$ARTIFACT_BUCKET" || { echo "::error::Set the ARTIFACT_BUCKET variable (bootstrap stack output)"; exit 1; }
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Build and upload the agent package
+        run: |
+          scripts/build-agent.sh build/agent.zip
+          echo "AGENT_KEY=agent/${STAGE}/${VERSION}.zip" >> "$GITHUB_ENV"
+          aws s3 cp build/agent.zip "s3://${ARTIFACT_BUCKET}/agent/${STAGE}/${VERSION}.zip"
+
+      - name: Deploy agent stack (AgentCore Runtime)
+        run: |
+          aws cloudformation deploy \
+            --stack-name "settle-${STAGE}-agent" \
+            --template-file infra/agent.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides Stage="$STAGE" AgentCodeBucket="$ARTIFACT_BUCKET" AgentCodeKey="$AGENT_KEY" ModelId="$MODEL_ID"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the API image (linux/arm64)
+        working-directory: .
+        run: |
+          mkdir -p ledger && touch ledger/.keep
+          IMAGE="${{ steps.ecr.outputs.registry }}/settle-api:${VERSION}"
+          docker buildx build --platform linux/arm64 -f api/Dockerfile -t "$IMAGE" --push \
+            --cache-from type=gha --cache-to type=gha,mode=max .
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy API stack (Fargate + ALB + CloudFront)
+        run: |
+          aws cloudformation deploy \
+            --stack-name "settle-${STAGE}-api" \
+            --template-file infra/api.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides Stage="$STAGE" ImageUri="$IMAGE" Demo="$DEMO" LedgerMode="$LEDGER_MODE" CorsOrigin="$CORS_ORIGIN" Ap4mNetwork="$AP4M_NETWORK" IntentMode="$INTENT_MODE"
+
+      - name: Wait for the service and smoke test
+        run: |
+          aws ecs wait services-stable --cluster "settle-${STAGE}" --services api
+          API_URL=$(aws cloudformation describe-stacks --stack-name "settle-${STAGE}-api" \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          for i in $(seq 1 30); do
+            if curl -fsS "$API_URL/health"; then break; fi
+            sleep 10
+          done
+          curl -fsS "$API_URL/state" | head -c 300
+          echo
+          {
+            echo "### Settle backend deployed (${STAGE})"
+            echo "- API: ${API_URL}"
+            echo "- Events: ${API_URL}/events"
+            echo "- Image: \`${IMAGE}\`"
+            echo "- Agent package: \`s3://${ARTIFACT_BUCKET}/${AGENT_KEY}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

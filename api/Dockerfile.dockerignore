@@ -1,0 +1,12 @@
+# Build context is the repo root; only ship api/ and Alex's ledger module.
+*
+!api/package.json
+!api/package-lock.json
+!api/.npmrc
+!api/tsconfig.json
+!api/tsconfig.build.json
+!api/src/**
+!ledger
+!ledger/**
+ledger/node_modules
+ledger/.env*

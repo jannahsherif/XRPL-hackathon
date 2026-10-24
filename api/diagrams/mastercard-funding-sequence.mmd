@@ -1,0 +1,13 @@
+sequenceDiagram
+  autonumber
+  participant M as Member phone
+  participant API as Settle API
+  participant MC as Mastercard Checkout Solutions (SIMULATED)
+  participant BUD as AP4M budget (PooledEscrowVault)
+
+  M->>API: POST /members/:id/fund {amountCents}
+  API->>MC: POST /src/api/digital/payments/transaction/credentials<br/>srcDigitalCardId (virtual card token, never a PAN)<br/>dynamicDataType = DYNAMIC_CARD_SECURITY_CODE
+  MC-->>API: APPROVED + one-time DTVC
+  API->>BUD: on-ramp USD → RLUSD (SIMULATED badge)
+  API-->>M: funding.completed (SSE): card •••• last4, fundedCents
+  Note over M,BUD: Funding and payout rails are SIMULATED, settlement on XRPL is LIVE (engineering plan)
