@@ -1,10 +1,10 @@
-import type { Batch, EscrowFinish, IssuedCurrencyAmount, LedgerEntry, Payment } from 'xrpl'
-import { BatchFlags, GlobalFlags, hashes, isoTimeToRippleTime, rippleTimeToISOTime } from 'xrpl'
+import type { EscrowFinish, IssuedCurrencyAmount, LedgerEntry, Payment } from 'xrpl'
+import { BatchFlags, GlobalFlags, isoTimeToRippleTime, rippleTimeToISOTime } from 'xrpl'
 import { assertAmount, isZero, refundFor, sub } from './amounts.ts'
 import { SUBMIT_DEFAULTS, TAB_DEFAULTS, TESTNET, TOKEN, type TokenName, resolveToken } from './config.ts'
 import { LedgerError } from './errors.ts'
 import { loadAccounts, loadEnv, loadWallets, memberAddress } from './keys.ts'
-import { type SubmitOptions, connect, lookupTx, resultCode, sleep, submitTx } from './submit.ts'
+import { type SubmitOptions, type Submitted, connect, submitTx } from './submit.ts'
 
 // Everything here is optional; seeds are never passed in, they stay in ledger/.env.
 export type LedgerConfig = {
@@ -21,7 +21,11 @@ export type LedgerConfig = {
   log?: (line: string) => void
 }
 
-export type OpenTabResult = {
+// submittedAt is just before the first submit request; validatedAt is when the server announced
+// the validated ledger holding the last transaction. Both ISO 8601.
+type Timing = { submittedAt: string; validatedAt: string }
+
+export type OpenTabResult = Timing & {
   escrowSeq: number
   txHash: string
   explorerUrl: string
@@ -43,16 +47,28 @@ type Settlement = {
   batchTxHash?: string
 }
 
-export type SettleTabResult = Settlement & {
-  toVenue: string
-  toMember: string
-  elapsedMs: number
-  explorerUrls: string[]
+export type SettleTabResult = Settlement &
+  Timing & {
+    toVenue: string
+    toMember: string
+    elapsedMs: number // validatedAt - submittedAt
+    explorerUrls: string[]
+  }
+
+export type CancelTabResult = {
+  txHash: string
+  explorerUrl: string
+  // EscrowCancel once the escrow has expired; before that, finish to the venue + full refund.
+  via: 'EscrowCancel' | 'refund'
 }
+
+export type Balances = { venue: string; members: Record<string, string> }
 
 export function explorerUrl(hash: string, explorerBase = TESTNET.explorerBase): string {
   return `${explorerBase}/transactions/${hash}`
 }
+
+const iso = (epochMs: number) => new Date(epochMs).toISOString()
 
 export function createLedger(config: LedgerConfig = {}) {
   const accounts = loadAccounts(config.accountsPath)
@@ -83,7 +99,7 @@ export function createLedger(config: LedgerConfig = {}) {
     const finishAfter = isoTimeToRippleTime(new Date(now + finishAfterSeconds * 1000).toISOString())
     const cancelAfter = isoTimeToRippleTime(new Date(now + cancelAfterSeconds * 1000).toISOString())
 
-    const tx = await submitTx(
+    const { tx, submittedAt, validatedAt } = await submitTx(
       conn,
       {
         TransactionType: 'EscrowCreate',
@@ -101,14 +117,16 @@ export function createLedger(config: LedgerConfig = {}) {
       txHash: tx.hash,
       explorerUrl: urlFor(tx.hash),
       ledgerIndex: tx.ledger_index!,
+      submittedAt: iso(submittedAt),
+      validatedAt: iso(validatedAt),
       allowance,
       finishAfter: rippleTimeToISOTime(finishAfter),
       cancelAfter: rippleTimeToISOTime(cancelAfter),
     }
   }
 
-  // The tab's escrow as it stands on the last validated ledger. Only TUSD (the configured token)
-  // escrows from the member to our venue count as tabs.
+  // The tab's escrow as it stands on the last validated ledger. Only escrows of the configured
+  // token from the member to our venue count as tabs.
   async function getTabEscrow(tab: Tab) {
     const owner = memberAddress(accounts, tab.memberId)
     const client = await conn.ready()
@@ -129,7 +147,12 @@ export function createLedger(config: LedgerConfig = {}) {
     if (escrow.Destination !== venue.address || amount.currency !== token.currency || amount.issuer !== token.issuer) {
       throw new LedgerError('ESCROW_NOT_FOUND', `escrow ${tab.escrowSeq} for ${tab.memberId} is not a ${token.name} tab with this venue`)
     }
-    return { owner, allowance: amount.value, finishAfter: escrow.FinishAfter ?? 0 }
+    return { owner, allowance: amount.value, finishAfter: escrow.FinishAfter ?? 0, cancelAfter: escrow.CancelAfter ?? 0 }
+  }
+
+  async function validatedCloseTime(): Promise<number> {
+    const client = await conn.ready()
+    return (await client.request({ command: 'ledger', ledger_index: 'validated' })).result.ledger.close_time
   }
 
   // EscrowFinish only succeeds once a validated ledger has closed after FinishAfter. Ledger close
@@ -137,11 +160,10 @@ export function createLedger(config: LedgerConfig = {}) {
   async function waitForCloseAfter(rippleTime: number): Promise<void> {
     const giveUpAt = Date.now() + 60_000
     for (;;) {
-      const client = await conn.ready()
-      const { ledger } = (await client.request({ command: 'ledger', ledger_index: 'validated' })).result
+      const next = conn.nextValidatedLedger(4_000)
       // Past the cap, submit anyway and let the ledger give the verdict.
-      if (ledger.close_time > rippleTime || Date.now() > giveUpAt) return
-      await sleep(500)
+      if ((await validatedCloseTime()) > rippleTime || Date.now() > giveUpAt) return
+      await next
     }
   }
 
@@ -158,6 +180,9 @@ export function createLedger(config: LedgerConfig = {}) {
     const escrow = await getTabEscrow(tab)
     const toMember = refundFor(escrow.allowance, amount, tipAmount)
     const toVenue = sub(escrow.allowance, toMember)
+    if ((await validatedCloseTime()) > escrow.cancelAfter) {
+      throw new LedgerError('LEDGER_REJECTED', `escrow ${tab.escrowSeq} expired at ${rippleTimeToISOTime(escrow.cancelAfter)}; cancelTab returns it to the member`)
+    }
     await waitForCloseAfter(escrow.finishAfter)
 
     const finish: EscrowFinish = {
@@ -170,12 +195,12 @@ export function createLedger(config: LedgerConfig = {}) {
       ? null
       : { TransactionType: 'Payment', Account: venue.address, Destination: escrow.owner, Amount: tokenAmount(toMember) }
 
-    // elapsedMs runs from the first `submit` request to the last validation.
-    let started: number | undefined
-    const onSubmit = () => {
-      started ??= performance.now()
+    // Timed from the first submit request, even if that was a Batch that then failed.
+    let submittedAt: number | undefined
+    const onSubmit = (at: number) => {
+      submittedAt ??= at
     }
-    let settlement: Settlement | undefined
+    let settlement: (Settlement & { validatedAt: number }) | undefined
     if (refund && useBatch) {
       try {
         settlement = await settleInBatch(finish, refund, onSubmit)
@@ -184,13 +209,22 @@ export function createLedger(config: LedgerConfig = {}) {
       }
     }
     settlement ??= await settleSequentially(finish, refund, onSubmit)
-    const elapsedMs = Math.round(performance.now() - started!)
 
-    const txHashes = [settlement.finishTxHash, settlement.refundTxHash, settlement.batchTxHash].filter((h) => h != null)
-    return { ...settlement, toVenue, toMember, elapsedMs, explorerUrls: txHashes.map(urlFor) }
+    const { validatedAt, ...hashes } = settlement
+    const txHashes = [hashes.finishTxHash, hashes.refundTxHash, hashes.batchTxHash].filter((h) => h != null)
+    return {
+      ...hashes,
+      toVenue,
+      toMember,
+      submittedAt: iso(submittedAt!),
+      validatedAt: iso(validatedAt),
+      elapsedMs: validatedAt - submittedAt!,
+      explorerUrls: txHashes.map(urlFor),
+    }
   }
 
-  async function settleInBatch(finish: EscrowFinish, refund: Payment, onSubmit: () => void): Promise<Settlement> {
+  async function settleInBatch(finish: EscrowFinish, refund: Payment, onSubmit: (at: number) => void) {
+    // submitTx checks every inner transaction and throws unless both succeeded.
     const batch = await submitTx(
       conn,
       {
@@ -203,37 +237,43 @@ export function createLedger(config: LedgerConfig = {}) {
       opts,
       onSubmit,
     )
-    // The outer Batch is tesSUCCESS even when its inner transactions fail, so check each by hash.
-    const inner = (batch.tx_json as Batch).RawTransactions.map(({ RawTransaction }) => RawTransaction)
-    const innerHashes = inner.map((tx) => hashes.hashSignedTx(tx))
-    const client = await conn.ready()
-    const results = await Promise.all(innerHashes.map((hash) => lookupTx(client, hash)))
-    const codes = results.map((r) => (r?.validated ? resultCode(r) : 'not applied'))
-    inner.forEach((tx, i) => opts.log(`${tx.TransactionType} ${innerHashes[i]} ${codes[i]} (in Batch ${batch.hash})`))
-    if (codes.some((code) => code !== 'tesSUCCESS')) {
-      throw new LedgerError('LEDGER_REJECTED', `Batch ${batch.hash} inner transactions: ${codes.join(', ')}`)
+    const [finished, refunded] = batch.inner
+    return {
+      finishTxHash: finished.hash,
+      refundTxHash: refunded.hash,
+      mode: 'batch' as const,
+      batchTxHash: batch.tx.hash,
+      validatedAt: batch.validatedAt,
     }
-    return { finishTxHash: innerHashes[0], refundTxHash: innerHashes[1], mode: 'batch', batchTxHash: batch.hash }
   }
 
-  async function settleSequentially(finish: EscrowFinish, refund: Payment | null, onSubmit: () => void): Promise<Settlement> {
+  async function settleSequentially(finish: EscrowFinish, refund: Payment | null, onSubmit: (at: number) => void) {
     const finished = await submitTx(conn, finish, venue, opts, onSubmit)
-    if (!refund) return { finishTxHash: finished.hash, refundTxHash: null, mode: 'sequential' }
-    try {
-      const refunded = await submitTx(conn, refund, venue, opts, onSubmit)
-      return { finishTxHash: finished.hash, refundTxHash: refunded.hash, mode: 'sequential' }
-    } catch (error) {
-      // The venue now holds the full allowance; say so, so the refund can be retried by hand.
-      const { code = 'LEDGER_REJECTED', result } = error as Partial<LedgerError>
-      throw new LedgerError(code, `escrow finished (${finished.hash}) but the refund to the member failed: ${(error as Error).message}`, result)
+    let refunded: Submitted | undefined
+    if (refund) {
+      try {
+        refunded = await submitTx(conn, refund, venue, opts, onSubmit)
+      } catch (error) {
+        // The venue now holds the full allowance; say so, so the refund can be retried by hand.
+        const { code = 'LEDGER_REJECTED', result } = error as Partial<LedgerError>
+        throw new LedgerError(code, `escrow finished (${finished.tx.hash}) but the refund to the member failed: ${(error as Error).message}`, result)
+      }
+    }
+    return {
+      finishTxHash: finished.tx.hash,
+      refundTxHash: refunded?.tx.hash ?? null,
+      mode: 'sequential' as const,
+      validatedAt: (refunded ?? finished).validatedAt,
     }
   }
 
-  async function cancelTab(_args: { tab: Tab }): Promise<never> {
+  // L5: close a tab with nothing spent. An expired escrow (past CancelAfter) can only be cancelled,
+  // which returns it to the member; before that, the venue finishes it and refunds it in full.
+  async function cancelTab(_args: { tab: Tab }): Promise<CancelTabResult> {
     throw new Error('cancelTab lands in L5')
   }
 
-  async function getBalances(): Promise<never> {
+  async function getBalances(): Promise<Balances> {
     throw new Error('getBalances lands in L6')
   }
 
@@ -249,9 +289,9 @@ export function createLedger(config: LedgerConfig = {}) {
   }
 }
 
+export type Ledger = ReturnType<typeof createLedger>
+
 function describe(error: unknown): string {
   if (error instanceof LedgerError) return [error.code, error.result].filter(Boolean).join(' ')
   return (error as Error).message
 }
-
-export type Ledger = ReturnType<typeof createLedger>
