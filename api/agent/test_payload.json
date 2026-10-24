@@ -1,0 +1,22 @@
+{
+  "tab": {
+    "id": "t101",
+    "seat": "Table 12",
+    "items": [
+      { "name": "Dry-Aged Ribeye", "qty": 1, "priceCents": 6800 },
+      { "name": "Glass of Sancerre", "qty": 2, "priceCents": 1800 }
+    ],
+    "totalCents": 10400,
+    "allowance": "600.00"
+  },
+  "member": {
+    "id": "m2",
+    "tier": "premier",
+    "typicalSpendCents": 18000,
+    "history": [
+      { "date": "2026-10-19", "totalCents": 16200 },
+      { "date": "2026-10-12", "totalCents": 18500 }
+    ]
+  },
+  "policy": { "graceSeconds": 10, "defaultTipPct": 20, "holdIfTotalOverTypicalX": 3, "holdIfItemOverAllowance": true, "splitBySeat": true }
+}

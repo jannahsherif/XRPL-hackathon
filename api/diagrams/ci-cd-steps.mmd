@@ -1,0 +1,20 @@
+flowchart TD
+  pr["pull request / push"] --> test
+  release["GitHub Release published<br/>pre-release → stage dev<br/>full release → stage prod"] --> test
+
+  subgraph test["job: test"]
+    t1["npm ci"] --> t2["typecheck"] --> t3["vitest"] --> t4["tsc build"] --> t5["cfn-lint infra/*.yaml<br/>py_compile agent/main.py"]
+  end
+
+  test -->|release events only| deploy
+  test -->|PR / push| stop["no deploy"]
+
+  subgraph deploy["job: deploy (GitHub environment = stage)"]
+    d1["checkout release tag<br/>OIDC → settle-github-deploy"] --> d2["build-agent.sh<br/>uv aarch64 wheels → agent.zip"]
+    d2 --> d3["s3 cp → agent/&lt;stage&gt;/&lt;tag&gt;.zip"]
+    d3 --> d4["cloudformation deploy<br/>settle-&lt;stage&gt;-agent"]
+    d4 --> d5["buildx linux/arm64<br/>push ECR settle-api:&lt;tag&gt;"]
+    d5 --> d6["cloudformation deploy<br/>settle-&lt;stage&gt;-api"]
+    d6 --> d7["ecs wait services-stable<br/>curl /health and /state"]
+    d7 --> d8["job summary: API URL"]
+  end

@@ -1,0 +1,4 @@
+bedrock-agentcore
+strands-agents
+pydantic
+aws-opentelemetry-distro

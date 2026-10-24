@@ -1,0 +1,337 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Settle API: one long-lived Fargate task (in-memory tab state + SSE) behind an
+  ALB, fronted by CloudFront for HTTPS. Calls the AgentCore settlement agent
+  and Alex's ledger module (keys from Secrets Manager).
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedPattern: "^[a-z][a-z0-9]{1,9}$"
+  ImageUri:
+    Type: String
+    Description: ECR image URI with tag (set by CI to the commit SHA).
+  Demo:
+    Type: String
+    AllowedValues: ["1", "0"]
+    Default: "1"
+    Description: DEMO=1 shortens grace to 10 s and seeds the wireframe data.
+  LedgerMode:
+    Type: String
+    AllowedValues: [stub, module]
+    Default: stub
+    Description: stub fakes hashes; module imports Alex's ledger/ (needs the ledger secret filled in).
+  CorsOrigin:
+    Type: String
+    Default: "*"
+  VpcCidr:
+    Type: String
+    Default: 10.42.0.0/16
+
+Resources:
+  # ---------------------------------------------------------------- network
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{ Key: Name, Value: !Sub "settle-${Stage}" }]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 4, 8]]
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: !Sub "settle-${Stage}-public-a" }]
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 4, 8]]
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: !Sub "settle-${Stage}-public-b" }]
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetARoute:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  SubnetBRoute:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Settle ALB (CloudFront origin; requests without the origin header get 403)
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Settle API task (ALB only)
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+
+  # ---------------------------------------------------------- load balancer
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets: [!Ref PublicSubnetA, !Ref PublicSubnetB]
+      SecurityGroups: [!Ref AlbSecurityGroup]
+      LoadBalancerAttributes:
+        # SSE streams stay open; heartbeats every 15 s keep them alive.
+        - { Key: idle_timeout.timeout_seconds, Value: "3600" }
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref Vpc
+      Protocol: HTTP
+      Port: 8080
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 10
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - { Key: deregistration_delay.timeout_seconds, Value: "5" }
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig: { StatusCode: "403", ContentType: text/plain, MessageBody: forbidden }
+
+  ForwardFromCloudFront:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref Listener
+      Priority: 1
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-Settle-Origin
+            Values: [!Select [2, !Split ["/", !Ref AWS::StackId]]]
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  # ---------------------------------------------------------------- CDN/HTTPS
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub settle-${Stage} API
+        PriceClass: PriceClass_100
+        HttpVersion: http2
+        Origins:
+          - Id: alb
+            DomainName: !GetAtt LoadBalancer.DNSName
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 60
+            OriginCustomHeaders:
+              - HeaderName: X-Settle-Origin
+                HeaderValue: !Select [2, !Split ["/", !Ref AWS::StackId]]
+        DefaultCacheBehavior:
+          TargetOriginId: alb
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+          CachedMethods: [GET, HEAD]
+          Compress: false # compression would buffer the SSE stream
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Managed-CachingDisabled
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # Managed-AllViewerExceptHostHeader
+
+  # ---------------------------------------------------------------- secrets
+  LedgerSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub settle/${Stage}/ledger-env
+      Description: >-
+        JSON object of the env vars Alex's ledger module reads (testnet seeds,
+        addresses). Fill in with `aws secretsmanager put-secret-value`. Never commit keys.
+      SecretString: "{}"
+
+  # ---------------------------------------------------------------- ECS
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub settle-${Stage}
+      ClusterSettings:
+        - { Name: containerInsights, Value: enabled }
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /settle/${Stage}/api
+      RetentionInDays: 30
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub settle-${Stage}-api-execution
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ecs-tasks.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: read-ledger-secret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref LedgerSecret
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub settle-${Stage}-api-task
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ecs-tasks.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: invoke-settlement-agent
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: bedrock-agentcore:InvokeAgentRuntime
+                Resource:
+                  - !ImportValue
+                    Fn::Sub: settle-${Stage}-agent-runtime-arn
+                  - !Sub
+                    - "${RuntimeArn}/*"
+                    - RuntimeArn: !ImportValue
+                        Fn::Sub: settle-${Stage}-agent-runtime-arn
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub settle-${Stage}-api
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "512"
+      Memory: "1024"
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: api
+          Image: !Ref ImageUri
+          Essential: true
+          PortMappings: [{ ContainerPort: 8080, Protocol: tcp }]
+          Environment:
+            - { Name: PORT, Value: "8080" }
+            - { Name: DEMO, Value: !Ref Demo }
+            - { Name: LEDGER_MODE, Value: !Ref LedgerMode }
+            - { Name: LEDGER_MODULE, Value: ../ledger/index.js }
+            - { Name: AGENT_MODE, Value: agentcore }
+            - Name: AGENT_RUNTIME_ARN
+              Value: !ImportValue
+                Fn::Sub: settle-${Stage}-agent-runtime-arn
+            - Name: AGENT_QUALIFIER
+              Value: !ImportValue
+                Fn::Sub: settle-${Stage}-agent-endpoint
+            - { Name: AWS_REGION, Value: !Ref AWS::Region }
+            - { Name: CORS_ORIGIN, Value: !Ref CorsOrigin }
+          Secrets:
+            - Name: LEDGER_ENV_JSON
+              ValueFrom: !Ref LedgerSecret
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: api
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: ForwardFromCloudFront
+    Properties:
+      ServiceName: api
+      Cluster: !Ref Cluster
+      LaunchType: FARGATE
+      TaskDefinition: !Ref TaskDefinition
+      # Exactly one task: tab state lives in memory. Max 100% means the old task
+      # stops before the new one starts, so state never splits across tasks.
+      DesiredCount: 1
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 0
+        MaximumPercent: 100
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+      HealthCheckGracePeriodSeconds: 30
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: [!Ref PublicSubnetA, !Ref PublicSubnetB]
+          SecurityGroups: [!Ref ServiceSecurityGroup]
+      LoadBalancers:
+        - ContainerName: api
+          ContainerPort: 8080
+          TargetGroupArn: !Ref TargetGroup
+
+Outputs:
+  ApiUrl:
+    Description: HTTPS base URL for the frontend (REST + /events SSE)
+    Value: !Sub https://${Distribution.DomainName}
+  LoadBalancerDns:
+    Value: !GetAtt LoadBalancer.DNSName
+  LedgerSecretArn:
+    Value: !Ref LedgerSecret
+  ClusterName:
+    Value: !Ref Cluster

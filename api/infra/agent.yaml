@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Settle settlement agent on Amazon Bedrock AgentCore Runtime (Strands, Python
+  code zip, arm64). The API calls it via InvokeAgentRuntime during the grace
+  period; hard hold rules run in the API before it.
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedPattern: "^[a-z][a-z0-9]{1,9}$"
+  AgentCodeBucket:
+    Type: String
+  AgentCodeKey:
+    Type: String
+    Description: S3 key of the agent zip. Changes every build so the Runtime picks up new code.
+  ModelId:
+    Type: String
+    Default: anthropic.claude-opus-5-5
+    Description: Bedrock model or inference-profile ID; confirm the exact ID available in your region.
+
+Resources:
+  RuntimeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub settle-${Stage}-agent-runtime
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: bedrock-agentcore.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*
+      Policies:
+        - PolicyName: runtime
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Logs
+                Effect: Allow
+                Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents, logs:DescribeLogStreams]
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*
+              - Sid: DescribeLogGroups
+                Effect: Allow
+                Action: logs:DescribeLogGroups
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
+              - Sid: Tracing
+                Effect: Allow
+                Action: [xray:PutTraceSegments, xray:PutTelemetryRecords, xray:GetSamplingRules, xray:GetSamplingTargets]
+                Resource: "*"
+              - Sid: Metrics
+                Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: bedrock-agentcore
+              - Sid: WorkloadIdentity
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetWorkloadAccessToken
+                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/*
+              - Sid: InvokeModel
+                Effect: Allow
+                Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+                Resource:
+                  - arn:aws:bedrock:*::foundation-model/*
+                  - !Sub arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*
+
+  SettlementAgentRuntime:
+    Type: AWS::BedrockAgentCore::Runtime
+    Properties:
+      AgentRuntimeName: !Sub settle_${Stage}_settlement
+      Description: Settle settlement agent (settle | split | hold, tip, reason)
+      RoleArn: !GetAtt RuntimeRole.Arn
+      AgentRuntimeArtifact:
+        CodeConfiguration:
+          Code:
+            S3:
+              Bucket: !Ref AgentCodeBucket
+              Prefix: !Ref AgentCodeKey
+          Runtime: PYTHON_3_13
+          EntryPoint: [opentelemetry-instrument, main.py]
+      NetworkConfiguration:
+        NetworkMode: PUBLIC
+      ProtocolConfiguration: HTTP
+      LifecycleConfiguration:
+        IdleRuntimeSessionTimeout: 300
+        MaxLifetime: 1800
+      EnvironmentVariables:
+        SETTLE_MODEL_ID: !Ref ModelId
+        SETTLE_STAGE: !Ref Stage
+
+  SettlementAgentEndpoint:
+    Type: AWS::BedrockAgentCore::RuntimeEndpoint
+    Properties:
+      AgentRuntimeId: !GetAtt SettlementAgentRuntime.AgentRuntimeId
+      AgentRuntimeVersion: !GetAtt SettlementAgentRuntime.AgentRuntimeVersion
+      Name: live
+      Description: Points at the latest deployed version
+
+Outputs:
+  AgentRuntimeArn:
+    Value: !GetAtt SettlementAgentRuntime.AgentRuntimeArn
+    Export:
+      Name: !Sub settle-${Stage}-agent-runtime-arn
+  AgentRuntimeId:
+    Value: !GetAtt SettlementAgentRuntime.AgentRuntimeId
+  AgentEndpointName:
+    Value: live
+    Export:
+      Name: !Sub settle-${Stage}-agent-endpoint
