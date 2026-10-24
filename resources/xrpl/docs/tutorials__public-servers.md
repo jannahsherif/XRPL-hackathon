@@ -1,0 +1,39 @@
+# Public Servers
+
+If you don't [run your own `xrpld` server](/docs/infrastructure/installation), you can use the following public servers to submit transactions or read data from the ledger.
+
+## Non-Commercial
+
+| Operator | [Network](/docs/concepts/networks-and-servers/parallel-networks) | JSON-RPC URL | WebSocket URL | Notes |
+|  --- | --- | --- | --- | --- |
+| Honeycluster | **Mainnet** | `https://honeycluster.io/` | `wss://honeycluster.io/` | Full history server cluster with Clio |
+| InFTF | **Mainnet** | `https://xrplcluster.com/`  `https://xrpl.ws/` [²](#footnote-2) | `wss://xrplcluster.com/`   `wss://xrpl.ws/` [²](#footnote-2) | Full history server cluster with CORS support. |
+| Ripple[¹](#footnote-1) | **Mainnet** | `https://s1.ripple.com:51234/` | `wss://s1.ripple.com/` | General purpose server cluster |
+| Ripple[¹](#footnote-1) | **Mainnet** | `https://s2.ripple.com:51234/` | `wss://s2.ripple.com/` | [Full-history server](/docs/concepts/networks-and-servers/ledger-history#full-history) cluster |
+
+
+## Commercial
+
+| Operator | [Network](/docs/concepts/networks-and-servers/parallel-networks) | JSON-RPC | Notes |
+|  --- | --- | --- | --- |
+| InFTF full history paid API via [Dhali](https://dhali.io/) | **Mainnet** | `https://xrplcluster.dhali.io/` | You must [create a paid API key](https://pay.dhali.io/?uuids=199fd80b-1776-4708-b1a1-4b2bb386435d) and embed it in the request's `Payment-Claim` header. |
+| [QuickNode](https://www.quicknode.com/chains/xrpl) | Testnet/Mainnet | N/A | QuickNode provides hosted XRPL RPC mainnet and testnet under their free and paid plans, granting flexible and reliable access to the network. |
+
+
+## Test Networks
+
+| Operator | [Network](/docs/concepts/networks-and-servers/parallel-networks) | JSON-RPC URL | WebSocket URL | Notes |
+|  --- | --- | --- | --- | --- |
+| Ripple[¹](#footnote-1) | Testnet | `https://s.altnet.rippletest.net:51234/` | `wss://s.altnet.rippletest.net:51233/` | Testnet public server |
+| Honeycluster | Testnet | `https://testnet.honeycluster.io/` | `wss://testnet.honeycluster.io/` | Testnet public server |
+| XRPL Labs | Testnet | `https://testnet.xrpl-labs.com/` | `wss://testnet.xrpl-labs.com/` | Testnet public server with CORS support |
+| Ripple[¹](#footnote-1) | Testnet (Clio) | `https://clio.altnet.rippletest.net:51234/` | `wss://clio.altnet.rippletest.net:51233/` | Testnet public server with Clio |
+| Ripple[¹](#footnote-1) | Devnet | `https://s.devnet.rippletest.net:51234/` | `wss://s.devnet.rippletest.net:51233/` | Devnet public server |
+| Ripple[¹](#footnote-1) | Devnet (Clio) | `https://clio.devnet.rippletest.net:51234/` | `wss://clio.devnet.rippletest.net:51233/` | Devnet public server with Clio |
+| Honeycluster | Devnet | `https://devnet.honeycluster.io/` | `wss://devnet.honeycluster.io/` | Devnet public server |
+| XRPL Labs | Xahau Testnet | `https://xahau-test.net/` | `wss://xahau-test.net/` | [Hooks-enabled](https://hooks.xrpl.org/) Xahau Testnet |
+
+
+¹ Ripple's public servers are not for sustained or business use, and they may become unavailable at any time. For regular use, you should [run your own `xrpld` server](/docs/concepts/networks-and-servers) or contract someone you trust to do so. Ripple includes [Clio servers](/docs/concepts/networks-and-servers/the-clio-server) in its public clusters.
+
+² `xrpl.ws` is an alias for `xrplcluster.com`. However, the `.ws` top-level domain's reliability may be unsuitable for production uses.
