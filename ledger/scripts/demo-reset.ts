@@ -1,19 +1,17 @@
 // demo:reset: put testnet back to the demo's starting state so the demo can be rerun. Closes every
-// open tab escrow (cancelled if expired, otherwise finished and refunded in full), then sets member
-// balances back to SEED_BALANCES and the venue back to zero. Safe to re-run.
+// open tab escrow (cancelled if expired, otherwise finished and refunded in full), then sets the
+// venue and every member back to SEED_BALANCES. Safe to re-run.
 import type { LedgerEntry } from 'xrpl'
 import { setBalance } from '../src/admin.ts'
-import { MEMBER_IDS, SEED_BALANCES, SUBMIT_DEFAULTS, TESTNET } from '../src/config.ts'
+import { MEMBER_IDS, SEED_BALANCES, SUBMIT_DEFAULTS } from '../src/config.ts'
 import { createLedger } from '../src/index.ts'
-import { loadAccounts, loadEnv, loadWallets } from '../src/keys.ts'
+import { loadAccounts, loadWallets, wsUrl } from '../src/keys.ts'
 import { connect } from '../src/submit.ts'
-
-const VENUE_BALANCE = '0'
 
 const accounts = loadAccounts()
 const wallets = loadWallets(accounts)
 const ledger = createLedger()
-const conn = connect(loadEnv().XRPL_WS_URL ?? TESTNET.wsUrl)
+const conn = connect(wsUrl())
 let failures = 0
 
 try {
@@ -41,10 +39,9 @@ try {
   }
 
   const issuer = wallets.get('issuer')!
-  for (const id of MEMBER_IDS) {
-    await setBalance(conn, SUBMIT_DEFAULTS, issuer, wallets.get(id)!, ledger.token, SEED_BALANCES[id])
+  for (const [role, balance] of Object.entries(SEED_BALANCES)) {
+    await setBalance(conn, SUBMIT_DEFAULTS, issuer, wallets.get(role)!, ledger.token, balance)
   }
-  await setBalance(conn, SUBMIT_DEFAULTS, issuer, wallets.get('venue')!, ledger.token, VENUE_BALANCE)
 
   const { venue, members } = await ledger.getBalances()
   console.log(`balances  venue ${venue} ${ledger.token.name}`)

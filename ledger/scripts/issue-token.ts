@@ -3,8 +3,8 @@
 // trust lines from the venue and every member, then seeds member balances. Safe to re-run.
 import { AccountSetAsfFlags, LedgerEntry } from 'xrpl'
 import { setBalance, trustLineBalance } from '../src/admin.ts'
-import { MEMBER_IDS, SEED_BALANCES, SUBMIT_DEFAULTS, TESTNET, TOKEN, TRUST_LIMIT, resolveToken } from '../src/config.ts'
-import { loadAccounts, loadEnv, loadWallets } from '../src/keys.ts'
+import { MEMBER_IDS, SEED_BALANCES, SUBMIT_DEFAULTS, TOKEN, TRUST_LIMIT, resolveToken } from '../src/config.ts'
+import { loadAccounts, loadWallets, wsUrl } from '../src/keys.ts'
 import { connect, submitTx } from '../src/submit.ts'
 
 const { lsfDefaultRipple, lsfAllowTrustLineLocking } = LedgerEntry.AccountRootFlags
@@ -19,7 +19,7 @@ if (token.issuer !== accounts.issuer) {
 }
 
 const opts = SUBMIT_DEFAULTS
-const conn = connect(loadEnv().XRPL_WS_URL ?? TESTNET.wsUrl)
+const conn = connect(wsUrl())
 const issuer = wallets.get('issuer')!
 try {
   const client = await conn.ready()
@@ -59,9 +59,9 @@ try {
     }),
   )
 
-  // Every top-up is an issuer payment, so these run one at a time on the issuer's sequence.
-  for (const id of MEMBER_IDS) {
-    await setBalance(conn, opts, issuer, wallets.get(id)!, token, SEED_BALANCES[id])
+  // Top-ups are issuer payments, so these run one at a time on the issuer's sequence.
+  for (const [role, balance] of Object.entries(SEED_BALANCES)) {
+    await setBalance(conn, opts, issuer, wallets.get(role)!, token, balance)
   }
 
   for (const role of ['venue', ...MEMBER_IDS]) {

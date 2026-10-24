@@ -26,15 +26,17 @@ export function resolveToken(name: TokenName, accounts: { issuer: string }): Tok
   return name === 'RLUSD' ? { name, ...RLUSD_TESTNET } : { name, currency: TUSD_HEX, issuer: accounts.issuer }
 }
 
-export const MEMBER_IDS = ['member-1', 'member-2', 'member-3', 'member-4']
+export const MEMBER_IDS = ['member-1', 'member-2', 'member-3', 'member-4', 'member-5']
 
-// Member balances that setup and demo:reset restore. member-1 is the demo member;
-// member-2 is the low-spend member for the anomaly case.
+// The token balances setup:token and demo:reset put every account back to. They cover the API's
+// allowances with headroom: member-1 is the demo member and has two seeded tabs (4,500 together).
 export const SEED_BALANCES: Record<string, string> = {
-  'member-1': '1000',
-  'member-2': '200',
-  'member-3': '400',
-  'member-4': '200',
+  venue: '0',
+  'member-1': '5000',
+  'member-2': '800',
+  'member-3': '800',
+  'member-4': '500',
+  'member-5': '1200',
 }
 
 export const TRUST_LIMIT = '1000000'
