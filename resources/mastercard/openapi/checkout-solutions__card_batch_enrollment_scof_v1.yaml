@@ -1,0 +1,978 @@
+openapi: 3.0.3
+info:
+  title: Mastercard Cards Batch Enroll API
+  description: Integrators can create unique tokens with Mastercard by enrolling credentials in a batch via Batch Enroll API. After a credential is enrolled, Integrators can use the srcDigitalCardId to understand the latest digital data regarding their tokenized credential.
+  termsOfService: https://developer.mastercard.com/terms-of-use
+  contact:
+    name: API Support
+    email: apisupport@mastercard.com
+    url: https://developer.mastercard.com/support
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+tags:
+  - name: Batch Cards
+    description: Tokenize your cards asynchronously in a batch. After the batch is processed, retrieve the srcDigitalCardId and srcConsumerId for individual cards and cardholders in the batch respectively.
+servers:
+  - description: Sandbox server
+    url: https://sandbox.api.mastercard.com/src/api/digital/payments
+  - description: Production Server
+    url: https://api.mastercard.com/src/api/digital/payments
+paths:
+  /cards/batch:
+    post:
+      summary: Batch Cards enrollment
+      description: |
+        The Batch API enrolls Mastercard cards into Mastercard and provisions tokens
+        which may be used in future transactions.
+      operationId: tokenizeCardsInBatch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchRequest'
+            examples:
+              SCOF_BATCH_ENROLL_REQUEST - JWEEncryptedRequest:
+                $ref: '#/components/examples/EncryptedSCOFEnrollCardBatchRequest'
+              SCOF_BATCH_ENROLL_REQUEST_TUR - PlainTextRequest:
+                $ref: '#/components/examples/PlainTextSCOFTUREnrollCardBatchRequest'
+        required: true
+      responses:
+        "202":
+          description: |
+            Accepted, Batch Id included in the response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        "400":
+          description: |
+            Bad request. Reason code of `INVALID_ARGUMENT` Identifies a malformed or invalid request. Use cases:
+              * Request Body JSON does not confirm to the schema of BatchRequest
+              * Mandatory parameters in request are missing example `externalBatchId` or `srcClientId` or `serviceId`
+                values are not provided.
+              * Request parameters value has invalid format example, `srcClientId` is not in UUID format.
+
+            Reason code of `INVALID_STATE` identifies a validation failed on request. Use cases:
+              * Request Body JSON schema validation failure.
+              * Data Type validation failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                INVALID_ARGUMENT:
+                  description: |
+                    See the message content for extra information. Either:
+
+                      * null externalBatchId
+                      * null srcClientId
+                      * null serviceId
+                  value:
+                    status: 400
+                    reason: INVALID_ARGUMENT
+                    message: Cannot process the request because it is malformed or has incorrect/missing fields or values.
+                    errordetail:
+                      - reason: CANNOT_BE_NULL
+                        source: serviceId
+                        message: serviceId is required
+                        sourceType: BODY
+      tags:
+        - Batch Cards
+  /cards/batch/{batchId}:
+    get:
+      summary: Get Batch Status by Batch ID
+      description: |
+        The Get Batch Status by Batch ID operation will retrieve the complete batch process details like status,
+        total no. of records inside the batch, no. of records processed & additionally provide the individual record
+        enroll status with externalConsumerId, externalCardId and srcDigitalCardId & srcConsumerId if enrollment
+        successful.
+      operationId: getBatchStatus
+      responses:
+        "200":
+          description: |
+            OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchStatusResponse'
+              examples:
+                SCOF_BATCH_STATUS - COMPLETED_SUCCESSFULLY:
+                  $ref: '#/components/examples/BatchSCOFEnrollSuccessfulCompletionStatusResponse'
+                SCOF_BATCH_STATUS - COMPLETED_WITH_FAILURES:
+                  $ref: '#/components/examples/BatchSCOFEnrollCompletionWithErrorsStatusResponse'
+                SCOF_BATCH_STATUS - PROCESSING:
+                  $ref: '#/components/examples/BatchSCOFEnrollProcessingStatusResponse'
+                SCOF_BATCH_STATUS - SUBMITTED:
+                  $ref: '#/components/examples/BatchSCOFEnrollSubmittedStatusResponse'
+                SCOF_BATCH_STATUS - FAILED:
+                  $ref: '#/components/examples/BatchSCOFEnrollFailedStatusResponse'
+        "400":
+          description: |
+            Bad request. Invalid batch Id field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                INVALID_ARGUMENT:
+                  value:
+                    status: 400
+                    reason: INVALID_ARGUMENT
+                    message: Cannot process the request because it is malformed or has incorrect/missing fields or values.
+                    errordetail:
+                      - reason: CANNOT_BE_NULL
+                        source: batchId
+                        message: batchId cannot be null
+                        sourceType: PATH
+        "404":
+          content:
+            application/json:
+              example:
+                errordetail:
+                  - message: BatchId not found
+                    reason: NOT_FOUND
+                    source: batchId
+                    sourceType: PATH
+                message: Cannot process the request because it is malformed or has incorrect/missing fields or values.
+                reason: NOT_FOUND
+                status: 404
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: |
+            batchId not found in the MACS system.
+      parameters:
+        - in: path
+          name: batchId
+          description: |
+            The batchId of the batch cards  enrolled in Mastercard.
+          example: ecbf78ec-0e8b-414f-8cfc-63e9c3fb9d48
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: srcCorrelationId
+          description: |
+            A unique identifier that correlates a series of two or more requests to a single session of activity.
+            Mastercard will return a new srcCorrelationId in each response by default, but
+            Integrators may choose to populate previously used srcCorrelationIds in subsequent requests to correlate
+            their activity under a single ID. This can be done by providing a Mastercard generated srcCorrelationId in
+            the request, or by generating your own ID in the same format. SrcCorrelationId is used for tracking and
+            troubleshooting purposes within Mastercard's ecosystem.
+          required: false
+          example: aec165e0-1905-4edd-89fa-be46497b5044
+          schema:
+            $ref: '#/components/schemas/SrcCorrelationId'
+        - in: query
+          name: srcClientId
+          description: |
+            A unique identifier assigned by Mastercard during onboarding which signifies the responsible party
+            Integrating to Mastercard.
+          example: eccbf087-f159-4d69-b31d-00bec75c0474
+          required: true
+          schema:
+            $ref: '#/components/schemas/SrcClientId'
+        - in: query
+          name: serviceId
+          description: |
+            A unique identifier assigned by Mastercard for which tokens are created uniquely for the entity onboarded.
+          example: SRC_C2P#CBA#01
+          required: true
+          schema:
+            $ref: '#/components/schemas/ServiceId'
+      tags:
+        - Batch Cards
+components:
+  examples:
+    BatchSCOFEnrollCompletionWithErrorsStatusResponse:
+      value:
+        srcClientId: caadb6b1-cc2d-4d16-8874-bdbbe40243ab
+        serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+        srcDpaId: b756a2b0-ef62-4c62-a6de-f72e75ce5f17
+        srcCorrelationId: xyzdf069-e245-3c54-a265-00def57e0452
+        batchId: 06a68383-7e6b-4ce5-98f0-4ff3c774b376
+        externalBatchId: dcabbf087-f159-4d69-b31d-00bec75c8266
+        status: COMPLETED_WITH_FAILURES
+        enrollmentRecords:
+          - consumer:
+              externalConsumerId: eccbf087-f159-4d69-b31d-00bec75c0474
+              srcConsumerId: 38bf50ec-0e8b-414f-8cfc-63e9c3fb9d40
+              status: SUCCESS
+            cards:
+              - externalEnrollmentReferenceId: ebcaf087-f159-4d69-b31d-00bec75c0886
+                status: SUCCESS
+                maskedCard:
+                  srcDigitalCardId: 68bf50ec-0e8b-414f-8cfc-63e9c3fb9d48
+                  serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+                  countryCode: US
+                  panBin: 520473
+                  panLastFour: 4601
+                  paymentCardDescriptor: mastercard
+                  digitalCardData:
+                    artUri: https://sbx.assets.mastercard.com/card-art/combined-image-asset/5f21f08e-0490-4603-bcd1-ac0be7ea0ecd.png
+                    coBrandedName: MyBank
+                    descriptorName: mastercard
+                    isCoBranded: true
+                    status: ACTIVE
+                  dateOfCardCreated: 2021-11-25T14:51:03.811Z
+              - externalEnrollmentReferenceId: ebcaf087-f159-4d69-b31d-00bec75c0886
+                status: SUCCESS
+                maskedCard:
+                  srcDigitalCardId: 68bf50ec-0e8b-414f-8cfc-63e9c3fb9d48
+                  serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+                  countryCode: US
+                  panBin: 520473
+                  panLastFour: 4601
+                  paymentCardDescriptor: mastercard
+                  digitalCardData:
+                    artUri: https://sbx.assets.mastercard.com/card-art/combined-image-asset/5f21f08e-0490-4603-bcd1-ac0be7ea0ecd.png
+                    coBrandedName: MyBank
+                    descriptorName: mastercard
+                    isCoBranded: true
+                    status: ACTIVE
+                  dateOfCardCreated: 2021-11-25T14:51:03.811Z
+              - externalEnrollmentReferenceId: 64bf50ec-0e8b-414f-8cfc-63e9c3fb9d68
+                status: FAILED
+                error:
+                  status: 400
+                  reason: INVALID_ARGUMENT
+                  message: Cannot process the request because it is malformed or has incorrect/missing fields or values
+                  errordetail:
+                    reason: CANNOT_BE_NULL
+                    source: Card
+                    message: CardholderFirstName is required
+                    sourceType: BODY
+              - externalEnrollmentReferenceId: 56bf50ec-0e8b-414f-8cfc-63e9c3fb9d76
+                status: FAILED
+                error:
+                  status: 400
+                  reason: INVALID_STATE
+                  message: Request cannot be executed due to the incorrect field value
+                  errordetail:
+                    reason: PAN_INELIGIBLE
+                    source: Card
+                    message: PAN Ineligible
+                    sourceType: BODY
+    BatchSCOFEnrollFailedStatusResponse:
+      value:
+        srcClientId: caadb6b1-cc2d-4d16-8874-bdbbe40243ab
+        serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+        srcDpaId: b756a2b0-ef62-4c62-a6de-f72e75ce5f17
+        srcCorrelationId: cdbaf069-e245-3c54-a265-00def57e4754
+        batchId: 06a68383-7e6b-4ce5-98f0-4ff3c774b376
+        externalBatchId: dcbaf069-e245-3c54-a265-00def57e0578
+        status: FAILED
+        error:
+          status: 400
+          reason: INVALID_STATE
+          message: Request cannot be executed due to the incorrect field value
+          errordetail:
+            reason: INVALID_VALUE
+            source: BatchRequest
+            message: Batch Request Decryption Failure.
+            sourceType: BODY
+    BatchSCOFEnrollProcessingStatusResponse:
+      value:
+        srcClientId: eccbf087-f159-4d69-b31d-00bec75c0474
+        serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+        srcDpaId: b756a2b0-ef62-4c62-a6de-f72e75ce5f17
+        srcCorrelationId: acbdf069-e245-3c54-a265-00def57e0478
+        batchId: 33242abc
+        externalBatchId: e2cbf087-f159-4d69-b31d-00bec75c0476
+        status: PROCESSING
+    BatchSCOFEnrollSubmittedStatusResponse:
+      value:
+        srcClientId: caadb6b1-cc2d-4d16-8874-bdbbe40243ab
+        serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+        srcDpaId: b756a2b0-ef62-4c62-a6de-f72e75ce5f17
+        srcCorrelationId: abecf069-e245-3c54-a265-00def57e0476
+        batchId: 06a68383-7e6b-4ce5-98f0-4ff3c774b376
+        externalBatchId: 48cbf087-f159-4d69-b31d-00bec75c5768
+        status: SUBMITTED
+    BatchSCOFEnrollSuccessfulCompletionStatusResponse:
+      value:
+        srcClientId: caadb6b1-cc2d-4d16-8874-bdbbe40243ab
+        serviceId: SECURE_COF_MERCHANT_OBO#MACS_SANDBOX_TESTING-MOBO#01
+        srcDpaId: 8833f421-e035-46ac-9385-e90a47c710c5
+        srcCorrelationId: aec165e0-1905-4edd-89fa-be46497b5044
+        batchId: 06a68383-7e6b-4ce5-98f0-4ff3c774b376
+        externalBatchId: 85d59360-b2fc-413d-b33d-087d72f2f8a2
+        status: COMPLETED_SUCCESSFULLY
+        enrollmentRecords:
+          - consumer:
+              externalConsumerId: 9274a607-ffdc-4674-8e94-15813a3fcf82
+              srcConsumerId: b3af09d0-c76c-479d-b012-79b7c756c7a6
+              status: SUCCESS
+            cards:
+              - externalEnrollmentReferenceId: 04ac304a-4e85-47ce-879d-28988502f352
+                status: SUCCESS
+                maskedCard:
+                  srcDigitalCardId: UfBShQZjTSeHYeAXNSYnoA000000000000US
+                  serviceId: SECURE_COF_MERCHANT_OBO#MACS_SANDBOX_TESTING-MOBO#01
+                  countryCode: US
+                  panBin: 520473
+                  panLastFour: 2796
+                  paymentCardDescriptor: mastercard
+                  digitalCardData:
+                    artUri: https://sbx.assets.mastercard.com/card-art/combined-image-asset/5f21f08e-0490-4603-bcd1-ac0be7ea0ecd.png
+                    coBrandedName: MyBank
+                    descriptorName: mastercard
+                    isCoBranded: true
+                    status: ACTIVE
+                  dateOfCardCreated: 2021-11-25T14:51:03.811Z
+              - externalEnrollmentReferenceId: ebcaf087-f159-4d69-b31d-00bec75c0886
+                status: SUCCESS
+                maskedCard:
+                  srcDigitalCardId: 68bf50ec-0e8b-414f-8cfc-63e9c3fb9d48
+                  serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+                  countryCode: US
+                  panBin: 520473
+                  panLastFour: 4601
+                  paymentCardDescriptor: mastercard
+                  digitalCardData:
+                    artUri: https://sbx.assets.mastercard.com/card-art/combined-image-asset/5f21f08e-0490-4603-bcd1-ac0be7ea0ecd.png
+                    coBrandedName: MyBank
+                    descriptorName: mastercard
+                    isCoBranded: true
+                    status: ACTIVE
+                  dateOfCardCreated: 2021-11-25T14:51:03.811Z
+          - consumer:
+              externalConsumerId: be8af087-f159-4d69-b31d-00bec75c0668
+            cards:
+              - externalEnrollmentReferenceId: ebcaf087-f159-4d69-b31d-00bec75c0886
+                status: SUCCESS
+                maskedCard:
+                  srcDigitalCardId: 68bf50ec-0e8b-414f-8cfc-63e9c3fb9d48
+                  serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+                  countryCode: US
+                  panBin: 520473
+                  panLastFour: 4601
+                  paymentCardDescriptor: mastercard
+                  digitalCardData:
+                    artUri: https://sbx.assets.mastercard.com/card-art/combined-image-asset/5f21f08e-0490-4603-bcd1-ac0be7ea0ecd.png
+                    coBrandedName: MyBank
+                    descriptorName: mastercard
+                    isCoBranded: true
+                    status: ACTIVE
+                  dateOfCardCreated: 2021-11-25T14:51:03.811Z
+              - externalEnrollmentReferenceId: ebcaf087-f159-4d69-b31d-00bec75c0886
+                status: SUCCESS
+                maskedCard:
+                  srcDigitalCardId: 68bf50ec-0e8b-414f-8cfc-63e9c3fb9d48
+                  serviceId: SECURE_COF_COMMERCE_PLATFORM#Mastercard#01
+                  countryCode: US
+                  panBin: 520473
+                  panLastFour: 4601
+                  paymentCardDescriptor: mastercard
+                  digitalCardData:
+                    artUri: https://sbx.assets.mastercard.com/card-art/combined-image-asset/5f21f08e-0490-4603-bcd1-ac0be7ea0ecd.png
+                    coBrandedName: MyBank
+                    descriptorName: mastercard
+                    isCoBranded: true
+                    status: ACTIVE
+                  dateOfCardCreated: 2021-11-25T14:51:03.811Z
+    EncryptedSCOFEnrollCardBatchRequest:
+      description: SCOF JWE (EnrollCard) Batch Request.
+      value:
+        srcClientId: caadb6b1-cc2d-4d16-8874-bdbbe40243ab
+        serviceId: SECURE_COF_MERCHANT_OBO#MACS_SANDBOX_TESTING-MOBO#01
+        srcDpaId: 8833f421-e035-46ac-9385-e90a47c710c5
+        externalBatchId: 85d59360-b2fc-413d-b33d-087d72f2f8a2
+        enrollmentData: eyJraWQiOiIyMDIzMDIwNzIyMzUyMS1zYW5kYm94LWZwYW4tZW5jcnlwdGlvbi1zcmMtbWFzdGVyY2FyZC1pbnQiLCJlbmMiOiJBMTI4R0NNIiwiYWxnIjoiUlNBLU9BRVAtMjU2In0.qyuxEfLWBPPMfGXiOd26jSprIg3XmhOqknKENZ1y4ejTmkW2c81EovxO1cdOiJk9ZNl-fKDMIlqKq_DpGmO0FBLoGIODuPTUHaNm3zszZF203RJFEZJFjPTfitMkqVDMA8PALICqOOKq0vX8M6BRUBMb0CGNc37L19XKcPdK22rOmiRWwmmUK_UnWWMPq4Wq5g3YB0ABgr0jAp04uuQ7qcqiYTzM1IW-1rvfDC2jFfuX-XEAex_rDl9CUOkakD54hcaHLL8x2jTCcPStn-zoHysHTjT2x4FOU5DDB5hyj47fWQXs5xNNmWmKDndE4Gw845WPj88uwy7Cb5phaOhrUA._iCmFqzANh9AJDS1.zaZqygYkK7Vxfy13W81Nl_mcLaCpe7eWQVBFZUrHIaGOiZR0sKlNJAVh-L_lHWbxQ00xjAjFEsp-ihI1ZgE13ctgdbXlqpx0zC3CaFKbc1lnf4gDaslHmJNIK33iy3muR3_e1ob2t0yi126pcxTe8xprgTeqjo-n3NsrqPhJ6qXvYce3355FbeJSn1pKkkv00j0GrWwMdJvSdcGHx0f5Te7VRxTj9wsKkYAxfmThgatrKhufJ-vhlVtGqI2z2nNkMHunGahqlwT9EYMTbsAAvlqEvvzv2655IBV2ju3VI9lj0_6Vvm5bOAH9T8gO94JIiQBRh_CwjFODIIAbxu3ohhzcLAc8z8750d7oLEkiIVA_wZFEw3N9WDHw3Wf1_YWBmsAiU_d2xvCrfLEmI1VnwHqi9zii0OvLPORF3mUEg188vNu89Uoa9mSsUDw9jnizQD0hgd1wvyY2NysIDqf0rTMptMdVXwJL32JJR-O30oPvWZ03liPvD2dYjE8rG933OPzjsg2Dq2Uv8hafuaH5UW8T8v_AZU9g5ic3m0qSJNmvsjLHwxhXrmVhKP_3Uyoxau6cHp-Hf2zYAI-WAuzC5BNIWhu6-F7gKoviNsa7IYWIOkAkg-dPKf6GOfRAfYDBSKnN5Eb4f8a5QuM6iU18_OY73_18zQ9WjRS4aWLfgZUZ3cjT-6qicSUaAGJeuv1S6KRBvPVlD6oI6x3J5rtlop31heToocL0AtUh20rHVuUkXg5PvbgabHFX1IoUz9pBxrlPTKbtLLtBI7jC4LrwmXE0KDhXjKnYP45CPYkQQEdKSKQchgYp3E8LW36xc99cnGezg3EK0LS0ItKfPtkhz2kuV-d9H_o6X0FJkROtL2esFhbjGqjpCxRGOhrZ7xxlz_ugjSg11kACKLrHyOM.cnQPTCJa6cNBruBWhrNkFA
+    PlainTextSCOFTUREnrollCardBatchRequest:
+      value:
+        srcClientId: caadb6b1-cc2d-4d16-8874-bdbbe40243ab
+        serviceId: SECURE_COF_MERCHANT_OBO#MACS_SANDBOX_TESTING-MOBO#01
+        srcDpaId: 8833f421-e035-46ac-9385-e90a47c710c5
+        externalBatchId: 85d59360-b2fc-413d-b33d-087d72f2f8a2
+        enrollmentData:
+          - enrollmentSource:
+              - externalEnrollmentReferenceId: ebcaf087-f159-4d69-b31d-00bec75c0864
+                enrollmentReferenceType: EXISTING_TOKEN_UNIQUE_REFERENCE
+                enrollmentReferenceId: DM4MMC0000144136fb04571884c24d7388daa18a772b05e5
+          - enrollmentSource:
+              - externalEnrollmentReferenceId: ebcaf087-f159-4d69-b31d-00bec75c0868
+                enrollmentReferenceType: EXISTING_TOKEN_UNIQUE_REFERENCE
+                enrollmentReferenceId: DM4MMC0000144136fb04571884c24d7388daa18a772b05e4
+          - enrollmentSource:
+              - externalEnrollmentReferenceId: ebcaf087-f159-4d69-b31d-00bec75c0868
+                enrollmentReferenceType: EXISTING_TOKEN_UNIQUE_REFERENCE
+                enrollmentReferenceId: DM4MMC0000144136fb04571884c24d7388daa18a772b05e4
+  schemas:
+    BatchId:
+      type: string
+      maxLength: 36
+      description: |
+        A unique identifier that is generated for the submitted batch sent from Mastercard part of
+        the 200-acknowledgement response. You can use this batchID parameter to check the status of the batch process
+        at a later time.
+      example: 06a68383-7e6b-4ce5-98f0-4ff3c774b376
+    BatchRequest:
+      required:
+        - serviceId
+        - srcClientId
+        - externalBatchId
+        - enrollmentData
+      properties:
+        srcClientId:
+          $ref: '#/components/schemas/SrcClientId'
+        serviceId:
+          $ref: '#/components/schemas/ServiceId'
+        srcDpaId:
+          $ref: '#/components/schemas/SrcDpaId'
+        externalBatchId:
+          $ref: '#/components/schemas/ExternalBatchId'
+        enrollmentData:
+          example: eyJraWQiOiIyMDIzMDIwNzIyMzUyMS1zYW5kYm94LWZwYW4tZW5jcnlwdGlvbi1zcmMtbWFzdGVyY2FyZC1pbnQiLCJlbmMiOiJBMTI4R0NNIiwiYWxnIjoiUlNBLU9BRVAtMjU2In0.qyuxEfLWBPPMfGXiOd26jSprIg3XmhOqknKENZ1y4ejTmkW2c81EovxO1cdOiJk9ZNl-fKDMIlqKq_DpGmO0FBLoGIODuPTUHaNm3zszZF203RJFEZJFjPTfitMkqVDMA8PALICqOOKq0vX8M6BRUBMb0CGNc37L19XKcPdK22rOmiRWwmmUK_UnWWMPq4Wq5g3YB0ABgr0jAp04uuQ7qcqiYTzM1IW-1rvfDC2jFfuX-XEAex_rDl9CUOkakD54hcaHLL8x2jTCcPStn-zoHysHTjT2x4FOU5DDB5hyj47fWQXs5xNNmWmKDndE4Gw845WPj88uwy7Cb5phaOhrUA._iCmFqzANh9AJDS1.zaZqygYkK7Vxfy13W81Nl_mcLaCpe7eWQVBFZUrHIaGOiZR0sKlNJAVh-L_lHWbxQ00xjAjFEsp-ihI1ZgE13ctgdbXlqpx0zC3CaFKbc1lnf4gDaslHmJNIK33iy3muR3_e1ob2t0yi126pcxTe8xprgTeqjo-n3NsrqPhJ6qXvYce3355FbeJSn1pKkkv00j0GrWwMdJvSdcGHx0f5Te7VRxTj9wsKkYAxfmThgatrKhufJ-vhlVtGqI2z2nNkMHunGahqlwT9EYMTbsAAvlqEvvzv2655IBV2ju3VI9lj0_6Vvm5bOAH9T8gO94JIiQBRh_CwjFODIIAbxu3ohhzcLAc8z8750d7oLEkiIVA_wZFEw3N9WDHw3Wf1_YWBmsAiU_d2xvCrfLEmI1VnwHqi9zii0OvLPORF3mUEg188vNu89Uoa9mSsUDw9jnizQD0hgd1wvyY2NysIDqf0rTMptMdVXwJL32JJR-O30oPvWZ03liPvD2dYjE8rG933OPzjsg2Dq2Uv8hafuaH5UW8T8v_AZU9g5ic3m0qSJNmvsjLHwxhXrmVhKP_3Uyoxau6cHp-Hf2zYAI-WAuzC5BNIWhu6-F7gKoviNsa7IYWIOkAkg-dPKf6GOfRAfYDBSKnN5Eb4f8a5QuM6iU18_OY73_18zQ9WjRS4aWLfgZUZ3cjT-6qicSUaAGJeuv1S6KRBvPVlD6oI6x3J5rtlop31heToocL0AtUh20rHVuUkXg5PvbgabHFX1IoUz9pBxrlPTKbtLLtBI7jC4LrwmXE0KDhXjKnYP45CPYkQQEdKSKQchgYp3E8LW36xc99cnGezg3EK0LS0ItKfPtkhz2kuV-d9H_o6X0FJkROtL2esFhbjGqjpCxRGOhrZ7xxlz_ugjSg11kACKLrHyOM.cnQPTCJa6cNBruBWhrNkFA
+          description: |
+            An object that contains a list of encrypted PANs or M4M Token Unique References that need to be migrated
+            to Secure Card on File. Please refer to JWE[EnrollmentRecords] for more info.
+          type: string
+      description: |
+        Batch Processing for Secure Card on file allows large volumes of credentials (up to 250 PANs or TURs) to be
+        submitted in a single Batch Enrollment request. For PAN-based enrollment, utilize the <b>cardData</b> object
+        or the <b>enrollmentReferenceId</b> parameter for MDES for Merchant (M4M) Token Unique Reference (TUR) migration.
+
+        The request must contain the following values:
+        <ul>
+        <li>serviceId</li>
+        <li>srcClientId</li>
+        <li>srcDpaId (for Secure Card on File Merchants)</li>
+        <li>externalBatchId</li>
+        <li>encrypted enrollmentData (cardData object for FPAN enrollment or enrollmentReferenceID for TUR migration)</li>
+        </ul>
+    BatchResponse:
+      required:
+        - batchId
+        - externalBatchId
+      type: object
+      properties:
+        batchId:
+          $ref: '#/components/schemas/BatchId'
+        externalBatchId:
+          $ref: '#/components/schemas/ExternalBatchId'
+      description: |
+        A response containing a batchID and externalBatchID is sent in return for a batch enroll request sent to
+        Mastercard.
+    BatchStatus:
+      type: string
+      description: |
+        The getBatch Status API can help understand if a bulk request is processed, as well the results of each record
+        enrolled to Secure Card on File. Please note, If getBatch Status API is called before the batch is complete,
+        the processing results of each record will not be retrieved, and getBatch must be called at a later time.
+      pattern: ^(COMPLETED_WITH_FAILURES|COMPLETED_SUCCESSFULLY|PROCESSING|SUBMITTED|FAILED)$
+    BatchStatusResponse:
+      required:
+        - batchId
+        - serviceId
+        - srcClientId
+        - externalBatchId
+      type: object
+      properties:
+        srcCorrelationId:
+          $ref: '#/components/schemas/SrcCorrelationId'
+        srcClientId:
+          $ref: '#/components/schemas/SrcClientId'
+        batchId:
+          $ref: '#/components/schemas/BatchId'
+        externalBatchId:
+          $ref: '#/components/schemas/ExternalBatchId'
+        serviceId:
+          $ref: '#/components/schemas/ServiceId'
+        status:
+          $ref: '#/components/schemas/BatchStatus'
+        error:
+          $ref: '#/components/schemas/Error'
+        enrollmentRecords:
+          items:
+            $ref: '#/components/schemas/EnrollmentRecordStatus'
+          type: array
+          description: >
+            An object that contains individual records (PANs or M4M Token Unique References). Please note that a Batch must contain only one enrollmentSource type and cannot have a mixed payload (i.e., there must not be both PANs and TURs in a single Batch request).
+      description: BatchStatus response  shows the status of the enrolled cards or the migrated TURs from a given batch.
+    CardData:
+      required:
+        - primaryAccountNumber
+        - panExpirationMonth
+        - panExpirationYear
+      type: object
+      properties:
+        primaryAccountNumber:
+          maxLength: 20
+          minLength: 16
+          example: 5186000000008888
+          type: string
+          description: Identifies PAN of card
+        panExpirationMonth:
+          maxLength: 2
+          minLength: 2
+          example: 12
+          type: string
+          description: Format in 'MM'
+        panExpirationYear:
+          maxLength: 4
+          minLength: 4
+          example: 2026
+          type: string
+          description: Format in 'YYYY'
+      description: Object for card data.
+    ConsumerData:
+      type: object
+      properties:
+        externalConsumerId:
+          $ref: '#/components/schemas/ExternalConsumerId'
+      description: Object for consumer profile information used to associate multiple cards to a single consumer profile.
+      required:
+        - externalConsumerId
+    DecisioningData:
+      type: object
+      properties:
+        recommendation:
+          maxLength: 64
+          example: APPROVED
+          type: string
+          description: |
+            Digitization decision recommended by the Integrator. The Integrator will use the algorithm indicated in the
+            recommendationAlgorithmVersion parameter to determine their recommendation. Must be either:
+
+            APPROVED (Recommend a decision of Approved), or
+
+            DECLINED (Recommend a decision of Declined).
+        recommendationAlgorithmVersion:
+          maxLength: 16
+          example: 01
+          type: string
+          description: |
+            Version of the algorithm used by the Integrator to determine its digitization decision recommendation;
+            must be a value of 01. Other values may be supported in the future.
+        deviceScore:
+          maxLength: 1
+          example: 1
+          type: string
+          description: |
+            Trust / Risk score assigned by the Integrator for the consumer device. Must be a value between 1 and 5,
+            with 1 being low trust and 5 being highly trusted.
+        accountScore:
+          maxLength: 1
+          example: 5
+          type: string
+          description: |
+            Trust / risk score assigned by the Integrator for the consumer account or relationship. Must be a value
+            between 1 and 5, with 1 being low trust and 5 being highly trusted.
+        recommendationReasons:
+          items:
+            example: RBA
+            type: string
+          type: array
+          description: |
+            Code indicating the reason why the Integrator is recommending their digitization decision.
+        deviceCurrentLocation:
+          maxLength: 14
+          example: "40.73, 73.99"
+          type: string
+          description: |
+            Latitude and longitude in the format "(sign) latitude, (sign) longitude" with a precision of 2 decimal
+            places. Ex - "38.63, -90.25" Latitude is between -90 and 90. Longitude between -180 and 180. Relates to the
+            target device being provisioned. If there is no target device, then this should be the current consumer
+            location, if available.
+        deviceIpAddress:
+          maxLength: 15
+          example: i.e.192.0.2.1
+          type: string
+          description: |
+            The IP address of the device through which the device reaches the internet. This may be a temporary or
+            permanent IP address assigned to a home router, or the IP address of a gateway through which the device
+            connects to a network. IPv4 address format of 4 octets separated by "." Ex - 127.0.0.1 Relates to the target
+            device being provisioned. If there is no target device, then this should be the current consumer IP address,
+            if available.
+        mobileNumberSuffix:
+          maxLength: 4
+          example: 1234
+          type: string
+          description: |
+            The last few digits (typically four) of the consumer's mobile phone number as available on file or on the
+            consumer's current device, which may or may not be the mobile number of the target device being provisioned.
+        accountIdHash:
+          maxLength: 64
+          example: aWH2WSnzB17XB5AF7QHSsn2OOQ9_2BezQhfWNyTiYmRVi_BCb4OqDCvJyGInYHin
+          type: string
+          description: |
+            SHA-256 hash of the Cardholder's account ID with the Integrator (typically an email address). Max length is
+            64 alpha-numeric and hex-encoded data (case-insensitive).
+      description: |
+        Object for digitization decisioning data, including account score, device score, and digitization decision
+        recommendation.
+    DigitalCardData:
+      required:
+        - artUri
+        - descriptorName
+        - status
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/DigitalCardStatus'
+        descriptorName:
+          maxLength: 64
+          example: Bank Rewards Mastercard
+          type: string
+          description: |
+            Issuers name their card portfolios, and they will create both long descriptions and short descriptions to
+            market their cards to Cardholders. This is the short description for a card.
+        artUri:
+          maxLength: 1024
+          example: https://assets.mastercard.com/card-art/combined-image-asset/MyBank-mastercard.png
+          type: string
+          description: |
+            URI that digitally represents the physical look of a card. This card art image can be used for presentation
+            purposes in user experiences and is provided by Issuers.
+        issuerName:
+          example: My Bank
+          minLength: 1
+          maxLength: 64
+          type: string
+          description: Name of the issuing bank.
+        foregroundColor:
+          minLength: 3
+          maxLength: 6
+          example: FF5733
+          type: string
+          description: |
+            Foreground color used to overlay text on top of the card image. This is always returned in the product
+            configuration object.
+      description: |
+        An object that will include the status of the card, whether the card is active, suspended or cancelled, the name
+        of the issuer, and card descriptors such as the short description of the card used by the issuers to name their
+        card portfolio, artURI that digitally represents the look of the card, and foreground color.
+    DigitalCardStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - CANCELLED
+        - SUSPENDED
+      description: |
+        The status of the digital card at any given time.
+
+        ACTIVE - Token is active and able to transact.
+
+        SUSPENDED - Token is suspended by the Issuer and unable to transact.
+
+        CANCELLED - Token is deleted by the Issuer and unable to transact.
+    EnrollmentCardRecord:
+      type: object
+      properties:
+        externalEnrollmentReferenceId:
+          $ref: '#/components/schemas/ExternalEnrollmentReferenceId'
+        status:
+          $ref: '#/components/schemas/EnrollmentCardRecordStatus'
+        maskedCard:
+          $ref: '#/components/schemas/MaskedCard'
+        error:
+          $ref: '#/components/schemas/Error'
+      description: |
+        An object for cards data helps map the externalEnrollmentReferenceId to the provisioning results and card meta data.
+    EnrollmentCardRecordStatus:
+      type: string
+      pattern: ^(SUCCESS|FAILED)$
+      description: |
+        An attribute that represents the current status of the an individual card enrollment. Integrators can retrieve
+        this enum value as part of the Get Batch Status API response.
+    EnrollmentConsumerRecord:
+      type: object
+      properties:
+        externalConsumerId:
+          $ref: '#/components/schemas/ExternalConsumerId'
+        srcConsumerId:
+          $ref: '#/components/schemas/SrcConsumerId'
+        status:
+          $ref: '#/components/schemas/EnrollmentConsumerRecordStatus'
+        error:
+          $ref: '#/components/schemas/Error'
+    EnrollmentConsumerRecordStatus:
+      type: string
+      pattern: ^(SUCCESS|FAILED)$
+      description: An object that contains the status of the consumer being added to Mastercard.
+    EnrollmentRecord:
+      type: object
+      properties:
+        consumer:
+          $ref: '#/components/schemas/ConsumerData'
+        enrollmentSource:
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/EnrollmentSource'
+          type: array
+          description: An object that contains a list of PANs or M4M Token Unique References that need to be migrated to Secure Card on File. 
+      description: The data used to Reference individual card based Enrollment.
+      required:
+        - enrollmentSource
+    EnrollmentRecordStatus:
+      type: object
+      properties:
+        consumer:
+          $ref: '#/components/schemas/EnrollmentConsumerRecord'
+        cards:
+          items:
+            $ref: '#/components/schemas/EnrollmentCardRecord'
+          type: array
+          description: |
+            Object for Consumer cards data including srcDigitalCardId, externalCardId & error details in case of
+            validation or enrollment failure.
+      description: |
+        Object for Consumer cards data including externalConsumerId, srcConsumerId, srcDigitalCardId, externalCardId &
+        error details in case of validation or enrollment failure.
+    EnrollmentRecords:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/components/schemas/EnrollmentRecord'
+      description: |
+        An object that contains individual records (PANs or M4M Token Unique References). Please note that a Batch must
+        contain only one enrollmentSource type and cannot have a mixed payload (i.e., there must not be both PANs and
+        TURs in a single Batch request).
+    EnrollmentReferenceType:
+      type: string
+      description: |
+        Type of enrollment data an integrator can send to Mastercard for card enrollment.
+
+        For Integrators looking to exchange their MDEs for Merchant (M4M) Token Unique Reference (TUR) for a Secure Card
+        on File (SCOF) srcDigitalCardId, the accepted value is EXISTING_TOKEN_UNIQUE_REFERENCE
+
+        For Integrators looking to enroll their cards using the FPAN, the accepted value is FPAN: A variable-length,
+        ISO/IEC 7812-compliant account number.
+      example: EXISTING_TOKEN_UNIQUE_REFERENCE
+      enum:
+        - EXISTING_TOKEN_UNIQUE_REFERENCE
+        - FPAN
+    EnrollmentSource:
+      required:
+        - externalEnrollmentReferenceId
+        - enrollmentReferenceType
+      type: object
+      properties:
+        externalEnrollmentReferenceId:
+          $ref: '#/components/schemas/ExternalEnrollmentReferenceId'
+        enrollmentReferenceType:
+          $ref: '#/components/schemas/EnrollmentReferenceType'
+        cardData:
+          $ref: '#/components/schemas/CardData'
+        enrollmentReferenceId:
+          example: DM4MMC000000000BGKEJIMXUMLORTSJ2NWTCSNSQP6I4RQ659
+          maxLength: 256
+          type: string
+          description: |
+            For Integrators looking to exchange their Token Unique Reference (TUR) for a Secure Card on File (SCOF)
+            srcDigitalCardId, use this field to send Mastercard the actual Token Unique Reference.
+        srcTokenRequestData:
+          $ref: '#/components/schemas/SrcTokenRequestData'
+      description: An object that contains a list of PANs or M4M Token Unique References that need to be migrated to Secure Card  on File.
+    Error:
+      required:
+        - message
+        - reason
+        - status
+      type: object
+      properties:
+        status:
+          format: int32
+          example: 400
+          type: integer
+          description: HTTP response status codes.
+        reason:
+          $ref: '#/components/schemas/ErrorReason'
+        message:
+          example: srcClientId is required
+          type: string
+          description: Error message details
+        errordetail:
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+          type: array
+          description: List of Errors
+      description: |
+        List of error codes that may be returned. An error code is returned in the ERROR block, in field STATUS along
+        with REASON, MESSAGE and ERRORDETAIL.
+    ErrorDetail:
+      required:
+        - reason
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/ErrorDetailReason'
+        message:
+          example: batchId is required
+          type: string
+          description: Error message details
+        sourceType:
+          $ref: '#/components/schemas/ErrorSourceType'
+        source:
+          example: batchId
+          type: string
+          description: source of the error
+    ErrorDetailReason:
+      type: string
+      enum:
+        - AMBIGUOUS_CONSUMER_IDENTITY
+        - CANNOT_BE_NULL
+        - INVALID_PAN
+        - INVALID_VALUE
+        - ISSUER_DECLINED
+        - NOT_FOUND
+        - NO_RESPONSE_FROM_ISSUER
+        - PAN_INELIGIBLE
+        - TOKENIZATION_INELIGIBLE
+      description: Error reason.
+    ErrorReason:
+      type: string
+      description: Error status.
+      enum:
+        - INVALID_ARGUMENT
+        - INTERNAL
+        - INVALID_STATE
+        - PERMISSION_DENIED
+        - UNAVAILABLE
+        - NOT_FOUND
+    ErrorSourceType:
+      type: string
+      description: Source of error.
+      enum:
+        - BODY
+        - HEADER
+        - QUERY
+        - PATH
+    ExternalBatchId:
+      type: string
+      maxLength: 100
+      description: |
+        A unique identifier that is passed to Mastercard for each batch API request. Please note, requests will be
+        ignored if an externalBatchID is not sent to mastercard
+      example: 85d59360-b2fc-413d-b33d-087d72f2f8a2
+    ExternalConsumerId:
+      type: string
+      maxLength: 100
+      description: A unique identifier for an individual consumer in a batch request provided by the integrator.
+      example: 84cbf087-f159-4d69-b31d-00bec75c0476
+    ExternalEnrollmentReferenceId:
+      type: string
+      maxLength: 100
+      description: |
+        A unique identifier that is passed to Mastercard for each PAN/TUR in a batch. Please note, the
+        externalEnrollmentReferenceId must be unique in order to map the correct srcDigitalCardID or errors for a given
+        enrollment record.
+      example: 64ebf087-f159-4d69-b31d-00bec75c0472
+    MaskedCard:
+      type: object
+      required:
+        - panLastFour
+        - dateOfCardCreated
+        - panBin
+        - srcDigitalCardId
+        - digitalCardData
+      properties:
+        srcDigitalCardId:
+          example: 68bf50ec-0e8b-414f-8cfc-63e9c3fb9d48
+          type: string
+          description: |
+            Card Reference Identifier as generated by the Mastercard. Use this srcDigitalCardId
+            in subsequent checkout requests to retrieve a DSRP payload containing the associated token and cryptogram
+            for payment authorization. Alternatively, use the srcDigitalCardId in a get card request to retrieve the
+            maskedCard details.
+        panBin:
+          example: 520473
+          type: string
+          description: "The first six digits of a FPAN, typically the Issuer BIN, in an unmasked form."
+        panLastFour:
+          example: 4601
+          type: string
+          description: Attribute of the card that represents the last four digits of the FPAN in an unmasked form.
+        digitalCardData:
+          $ref: '#/components/schemas/DigitalCardData'
+        panExpirationMonth:
+          example: '05'
+          minLength: 2
+          maxLength: 2
+          type: string
+          description: "Expiration month of the card, expressed as a two-digit calendar month."
+        panExpirationYear:
+          example: 2022
+          minLength: 4
+          maxLength: 4
+          type: string
+          description: "Expiration year of the card, expressed as a four-digit calendar year."
+        paymentCardDescriptor:
+          example: mastercard
+          type: string
+          description: Indicates the card payment network. This will be set to 'mastercard' or 'maestro'.
+        paymentCardType:
+          example: CREDIT
+          type: string
+          description: |
+            Conveys the card type. Note that COMBO and FLEX are for applicable regions, only.
+
+            Possible values:
+              * `CREDIT`
+              * `DEBIT`
+              * `PREPAID`
+              * `COMBO`
+              * `FLEX`
+        paymentAccountReference:
+          example: 5001EUMYTT3AESCZGUEC77KPCLETI
+          type: string
+          description: |
+            A non-financial reference assigned to each unique FPAN that's used to link the payment account of that PAN
+            to affiliated payment tokens.
+        dateOfCardCreated:
+          example: 2021-11-25T14:51:03.811Z
+          type: string
+          description: Date (in UTC) when the card was enrolled into the Mastercard system.
+      description: |
+        Object for information related to a card enrolled in Mastercard. Details include card
+        art, masked FPAN information, and token data."
+    ServiceId:
+      type: string
+      maxLength: 255
+      description: |
+        A unique identifier assigned by Mastercard for which tokens are created uniquely for the entity onboarded.
+      example: SECURE_COF_MERCHANT_OBO#MACS_SANDBOX_TESTING-MOBO#01
+    SrcClientId:
+      pattern: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+      type: string
+      format: UUID
+      description: |
+        A unique identifier assigned by Mastercard during onboarding which signifies the responsible party Integrating
+        to Mastercard.
+      example: caadb6b1-cc2d-4d16-8874-bdbbe40243ab
+    SrcConsumerId:
+      type: string
+      maxLength: 36
+      description: Consumer Reference Identifier as generated by the Mastercard.
+      example: b3af09d0-c76c-479d-b012-79b7c756c7a6
+    SrcCorrelationId:
+      type: string
+      maxLength: 36
+      description: |
+        A unique identifier that correlates a series of two or more requests to a single session of activity.
+        Mastercard will return a new srcCorrelationId in each response by default, but
+        Integrators may choose to populate previously used srcCorrelationIds in subsequent requests to correlate
+        their activity under a single ID. This can be done by providing a Mastercard generated srcCorrelationId in the
+        request, or by generating your own ID in the same format. SrcCorrelationId is used for tracking and
+        troubleshooting purposes within Mastercard's ecosystem.
+      example: aec165e0-1905-4edd-89fa-be46497b5044
+    SrcDpaId:
+      type: string
+      maxLength: 255
+      description: |
+        The registered identifier for the Digital Payment Application (DPA) accessing the service.
+
+        __Conditional__: Required if you are a Merchant directly integrating with Mastercard
+        APIs, a Payment Service Provider (PSP) integrating On-Behalf-Of (OBO) a Merchant, a Payment Facilitator, or if
+        you are enrolling in the Secure Card on File (SCOF) QR program.
+      example: 8833f421-e035-46ac-9385-e90a47c710c5
+    SrcTokenRequestData:
+      type: object
+      properties:
+        decisioningData:
+          $ref: '#/components/schemas/DecisioningData'
+      description: |
+        Object for digitization decisioning data, including account score, device score, and digitization decision
+        recommendation.

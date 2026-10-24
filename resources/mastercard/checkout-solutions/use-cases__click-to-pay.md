@@ -1,0 +1,42 @@
+# Click to Pay
+source: https://developer.mastercard.com/mastercard-checkout-solutions/documentation/use-cases/click-to-pay/index.md
+
+Built on EMV® Secure Remote Commerce standards, Mastercard Click to Pay gives consumers a simple, secure and consistent way to check out. To learn more about the key beneifts, see the [Click to Pay](https://developer.mastercard.com/mastercard-checkout-services/product/click-to-pay/) home page.
+
+## Participants and Interactions {#participants-and-interactions}
+
+Learn about the roles of the different participants and their interactions to facilitate the Click to Pay checkout experience in the following diagram.
+
+![Getting Started](https://static.developer.mastercard.com/content/mastercard-checkout-solutions/documentation/images/clicktopay_participants_interactions_7.png)
+
+|                Participant                |                                                                                                                                         Description                                                                                                                                         |                                Participant Examples                                |
+|-------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| **Consumer**                              | Consumer chooses to perform checkout at a merchant site.                                                                                                                                                                                                                                    | * Cardholder                                                                       |
+| **Integrator**                            | The integrator plays a role of an SRCi (Secure Remote Commerce Initiator). They integrate with the Merchants and Mastercard Checkout Solutions to initiate and complete checkout. Enables discovery and selection of payment cards.                                                         | * Merchants * PSPs * Gateways * eCommerce Service/Technology Providers * Acquirers |
+| **Mastercard** **Checkout** **Solutions** | Serves as an integration point and interacts with the SRCi and DCF system to initiate and complete checkout.                                                                                                                                                                                | * Mastercard                                                                       |
+| **Digital Card Facilitator (DCF)**        | Provides a consumer with access to a digital card. * Hosts UI to display selected card details and captures consumer details where required * Performs cardholder authentication as required * Presents relevant Terms and Conditions and collects relevant consumer consent where required | * Networks                                                                         |
+| **Issuer**                                | Responsible for enrollment of cardholder                                                                                                                                                                                                                                                    | * Issuers                                                                          |
+
+## Use Cases {#use-cases}
+
+Consumers using Click to Pay for the first time would need to sign up with Click to Pay by enrolling their payment card and shipping address. After the initial registration, for subsequent purchases, consumers can either sign in to their Click to Pay profile with their registered email address or mobile number and quickly checkout using the profile data, or choose to checkout as a guest. Thus, depending on their activities with Click to Pay, consumers categorize into one of the following scenarios:
+
+|                                                                                   Use Case                                                                                    |                                                                                                                                                                                                Description                                                                                                                                                                                                |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [**Repeat User on Recognized Device**](https://developer.mastercard.com/mastercard-checkout-solutions/documentation/use-cases/click-to-pay/returninguser_recognized/index.md) | Consumers who have enrolled in Click to Pay and are checking out using a recognized device (that is, they selected "Remember me" on their device during a previous checkout) will have the fastest checkout experience. In this case, (user verification) OTP step or passkey is not required, consumers just need to confirm the payment card and shipping address they wish to use for the transaction. |
+| [**Repeat User on Unrecognized Device**](https://developer.mastercard.com/mastercard-checkout-solutions/documentation/use-cases/click-to-pay/repeatuser_newdevice/index.md)   | Consumers who have a Click to Pay profile but are checking out using an unrecognized device will need to enter the email address or phone number associated with their Click to Pay payment profile. Consumers need to verify their identity with a passkey or a one-time-passcode (OTP) sent to their email address or mobile number.                                                                    |
+| [**First Time Users**](https://developer.mastercard.com/mastercard-checkout-solutions/documentation/use-cases/click-to-pay/firsttimeuser_usecase/index.md)                    | Consumers who have not registered with Click to Pay and are using Click to Pay for the first time need to enter their payment card and shipping address before checkout.                                                                                                                                                                                                                                  |
+
+## Applicable APIs {#applicable-apis}
+
+|                                                                    API                                                                    | Merchant |   PSP    |
+|-------------------------------------------------------------------------------------------------------------------------------------------|----------|----------|
+| [DPA Registration](https://developer.mastercard.com/mastercard-checkout-solutions/documentation/api-reference/apis/index.md#registration) | N/A      | Required |
+| [Checkout](https://developer.mastercard.com/mastercard-checkout-solutions/documentation/api-reference/apis/index.md#click-to-pay)         | Required | Required |
+| [Confirmations](https://developer.mastercard.com/mastercard-checkout-solutions/documentation/api-reference/apis/index.md#confirmations)   | Required | Required |
+
+## Next Steps {#next-steps}
+
+Review the use cases in detail to understand the consumer scenarios and the SDK and API calls you need to make in order to provide Click to Pay checkout experience for your consumers.
+
+Further, refer to the [Tutorials and Guides](https://developer.mastercard.com/mastercard-checkout-solutions/documentation/tutorials-and-guides/index.md) section to understand the steps to onboard, integrate and test.

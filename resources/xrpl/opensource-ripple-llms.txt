@@ -1,0 +1,95 @@
+# llms.txt
+
+## Table of contents
+
+ - [Contributor Covenant Code of Conduct](https://opensource.ripple.com/code_of_conduct.md)
+ - [Closed-Ended Vaults](https://opensource.ripple.com/docs/lending-protocol-v1-1/closed-ended-vaults.md)
+ - [Updated Ledger Entries](https://opensource.ripple.com/docs/lending-protocol-v1-1/updated-ledger-entries.md)
+ - [RippleX Roadmap](https://opensource.ripple.com/ripplex-roadmap.md)
+ - [Open Source Projects](https://opensource.ripple.com/docs.md)
+ - [Cash-Basis Accounting](https://opensource.ripple.com/docs/lending-protocol-v1-1/cash-basis-accounting.md)
+ - [Updated Transactions](https://opensource.ripple.com/docs/lending-protocol-v1-1/updated-transactions.md)
+ - [Errors](https://opensource.ripple.com/docs/simplexrpl/references/errors.md): The simpleXRPL client errors.
+ - [Intent Inspector](https://opensource.ripple.com/docs/simplexrpl/references/intent-inspector.md): Resume polling or waiting on a custodian governance intent by id, after its original submission has already returned.
+ - [Core Types](https://opensource.ripple.com/docs/simplexrpl/references/types.md): Core types in simpleXRPL — the shared account records, submission results, and connector identifiers used across the client, connectors, and verticals.
+ - [simpleXRPL](https://opensource.ripple.com/docs/simplexrpl.md): simpleXRPL is an opinionated TypeScript SDK that lets institutional developers express XRP Ledger operations as business intent and route them through the custodians they already use.
+ - [Client](https://opensource.ripple.com/docs/simplexrpl/references/client.md): The simpleXRPL client is the runtime entry point — SimpleXRPL.init() builds it, and it exposes the verticals, the discovered accounts, and the ledger connection lifecycle.
+ - [Account Discovery](https://opensource.ripple.com/docs/simplexrpl/tutorials/account-discovery.md): You can get a list of accounts per-connector or across the whole client.
+ - [Call Palisade Operations Directly](https://opensource.ripple.com/docs/simplexrpl/tutorials/call-palisade-operations-directly.md): Call the Palisade API directly for any operations simpleXRPL verticals don't expose.
+ - [Connect to a Custodian](https://opensource.ripple.com/docs/simplexrpl/tutorials/connect-to-custodian.md): This tutorial demonstrates how to connect to a custodian (Palisade and Ripple Custody).
+ - [Create A Permissioned Domain](https://opensource.ripple.com/docs/simplexrpl/tutorials/create-permissioned-domain.md): Set up a permissioned domain that restricts participation to credential holders, then scope DEX offers to it.
+ - [Run A Workflow Across Custodians](https://opensource.ripple.com/docs/simplexrpl/tutorials/cross-custodian-workflows.md): Drive accounts held by different custodians from a single client, routing each operation to the connector that owns the account.
+ - [Implement An External Signer](https://opensource.ripple.com/docs/simplexrpl/tutorials/external-signer.md): Implement the ExternalSignerPort seam end to end with a mock signer, and switch between secp256k1 and ed25519.
+ - [Sign With AWS KMS](https://opensource.ripple.com/docs/simplexrpl/tutorials/implement-aws-kms-signer.md): Sign transactions with a secp256k1 key held in AWS KMS using the simplexrpl/aws-kms adapter; the private key never leaves KMS.
+ - [Get Started](https://opensource.ripple.com/docs/simplexrpl/get-started.md): Install simpleXRPL, construct a connector, initialize the client, discover your accounts, and send your first XRP Ledger payment.
+ - [Implement A PKCS#11 HSM Signer](https://opensource.ripple.com/docs/simplexrpl/tutorials/implement-pkcs11-signer.md): Implement the ExternalSignerPort seam against a PKCS#11 HSM — you provide the public key and digest signing; the SDK owns the XRPL crypto.
+ - [Issue And Distribute An IOU](https://opensource.ripple.com/docs/simplexrpl/tutorials/issue-and-distribute-iou.md): Issue a trust line currency (IOU) and distribute it: bootstrap the issuer and hot wallet, then transfer the currency out.
+ - [Issue An RWA As An MPT](https://opensource.ripple.com/docs/simplexrpl/tutorials/issue-rwa-as-mpt.md): Issue a Real-World Asset as a Multi-Purpose Token (MPT) through Ripple Custody, with XLS-89 metadata validated before submission.
+ - [Place A DEX Order](https://opensource.ripple.com/docs/simplexrpl/tutorials/place-dex-order.md): Place buy and sell orders on the XRP Ledger DEX with the iou vertical, using familiar order types.
+ - [Fee Voting](https://opensource.ripple.com/docs/xls-100-smart-escrows/concepts/fee-voting.md): How validators vote on fees (transaction cost and reserve requirements).
+ - [Programmability](https://opensource.ripple.com/docs/xls-100-smart-escrows/concepts/programmability.md)
+ - [Escrow](https://opensource.ripple.com/docs/xls-100-smart-escrows/references/escrow-entry.md): An escrow, which holds funds to be released when certain conditions are met.
+ - [EscrowCreate](https://opensource.ripple.com/docs/xls-100-smart-escrows/references/escrowcreate.md): Escrow funds, which can be released to the destination after a specific time or condition.
+ - [EscrowFinish](https://opensource.ripple.com/docs/xls-100-smart-escrows/references/escrowfinish.md): Deliver escrowed funds to the intended recipient.
+ - [FeeSettings](https://opensource.ripple.com/docs/xls-100-smart-escrows/references/feesettings.md): The current base transaction cost and reserve requirements.
+ - [SetFee](https://opensource.ripple.com/docs/xls-100-smart-escrows/references/setfee.md): Change global reserve and transaction cost settings.
+ - [Connector Routing](https://opensource.ripple.com/docs/simplexrpl/references/connectors/connector-routing.md): The connector routing table — per XRPL transactor and per custodian, whether an operation routes native, requires the raw-signing fallback, or is unavailable.
+ - [External](https://opensource.ripple.com/docs/simplexrpl/references/connectors/external.md): ExternalSigner is simpleXRPL's connector for keys held in a KMS or HSM. It signs through a caller-supplied port so the private key never enters the process.
+ - [Connectors](https://opensource.ripple.com/docs/simplexrpl/references/connectors.md): A connector is a signing backend in simpleXRPL — LocalSigner, ExternalSigner, RippleCustody, or PalisadeCustody — constructed on its own and bound to the client at initialization.
+ - [Local](https://opensource.ripple.com/docs/simplexrpl/references/connectors/local.md): LocalSigner is simpleXRPL's self-custody connector — it holds xrpl wallets in-process and signs locally, for development and testing.
+ - [Palisade](https://opensource.ripple.com/docs/simplexrpl/references/connectors/palisade.md): PalisadeCustody is simpleXRPL's production connector for Palisade — construction config and required fields for create().
+ - [Ripple Custody](https://opensource.ripple.com/docs/simplexrpl/references/connectors/ripple-custody.md): RippleCustody is simpleXRPL's production connector for Ripple Custody — construction options and required fields for create() and fromEnv().
+ - [Verticals](https://opensource.ripple.com/docs/simplexrpl/references/verticals.md): A vertical is a domain-specific class of business-intent operations in simpleXRPL — one per area of XRPL functionality, reached off the client.
+ - [account.activate()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account/activate.md): Account.activate activates a created account by sending it XRP from the operator account, then enabling rippling.
+ - [account.create()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account/create.md): Account.create generates a new XRPL keypair locally and registers it. No transaction is submitted.
+ - [account.depositPreauth()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account/depositpreauth.md): Account.depositPreauth grants or revokes deposit preauthorization for another account via a DepositPreauth transaction.
+ - [account.fund()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account/fund.md): Account.fund funds a created account from a testnet/devnet faucet, then enables rippling via an AccountSet transaction.
+ - [Account](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account.md): The Account vertical in simpleXRPL manages account creation, funding, settings, regular keys, and deposit preauthorization.
+ - [account.listOffers()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account/listoffers.md): Account.listOffers lists the open DEX offers placed by an account. Read-only.
+ - [account.retrieve()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account/retrieve.md): Account.retrieve reads an account's on-chain state — balance, sequence, owner count, and flags. Read-only.
+ - [account.set()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account/set.md): Account.set updates account settings and flags via an AccountSet transaction.
+ - [account.setRegularKey()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/account/setregularkey.md): Account.setRegularKey sets or removes the account's regular key via a SetRegularKey transaction.
+ - [credential.accept()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/credential/accept.md): Credential.accept accepts a credential issued to the calling account via a CredentialAccept transaction.
+ - [credential.delete()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/credential/delete.md): Credential.delete deletes an on-ledger credential, as either its issuer or its holder, via a CredentialDelete transaction.
+ - [Credential](https://opensource.ripple.com/docs/simplexrpl/references/verticals/credential.md): The Credential vertical in simpleXRPL issues, accepts, and deletes on-ledger credentials.
+ - [credential.issue()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/credential/issue.md): Credential.issue issues an on-ledger credential to a destination account via a CredentialCreate transaction.
+ - [credential.list()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/credential/list.md): Credential.list lists the credentials an account holds or issued. Read-only.
+ - [credential.retrieve()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/credential/retrieve.md): Credential.retrieve reads a single credential by type and issuer. Read-only.
+ - [domain.create()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/domain/create.md): Domain.create creates a new permissioned domain via a PermissionedDomainSet transaction.
+ - [domain.delete()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/domain/delete.md): Domain.delete deletes a permissioned domain via a PermissionedDomainDelete transaction.
+ - [Domain](https://opensource.ripple.com/docs/simplexrpl/references/verticals/domain.md): The Domain vertical in simpleXRPL creates, updates, and deletes permissioned domains.
+ - [domain.list()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/domain/list.md): Domain.list lists every permissioned domain owned by an account. Read-only.
+ - [domain.retrieve()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/domain/retrieve.md): Domain.retrieve reads a permissioned domain by id. Read-only.
+ - [domain.setCredentials()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/domain/setcredentials.md): Domain.setCredentials updates the accepted credentials of an existing permissioned domain via a PermissionedDomainSet transaction.
+ - [iou.authorize()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/authorize.md): IOU.authorize authorizes a holder to hold an IOU via a TrustSet transaction with the authorize flag.
+ - [iou.buyOffer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/buyoffer.md): IOU.buyOffer places a DEX order to acquire more of this IOU via an OfferCreate transaction.
+ - [iou.cancelOffer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/canceloffer.md): IOU.cancelOffer cancels a standing DEX offer placed by the issuer via an OfferCancel transaction.
+ - [iou.clawback()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/clawback.md): IOU.clawback reclaims a holder's balance back to the issuer via a Clawback transaction.
+ - [IOU](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou.md): The IOU vertical in simpleXRPL issues and manages trust line-based issued currencies.
+ - [iou.issue()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/issue.md): IOU.issue bootstraps a new trust line-based IOU. It enables rippling, extends trust, and optionally distributes an opening amount to the hot wallet.
+ - [iou.list()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/list.md): IOU.list lists every IOU trust line for an account. Read-only.
+ - [iou.listOffers()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/listoffers.md): IOU.listOffers lists all open offers in the market for an IOU (both sides of the order book). Read-only.
+ - [iou.lock()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/lock.md): IOU.lock freezes a holder's trust line via individual and deep freeze TrustSet transactions.
+ - [iou.retrieve()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/retrieve.md): IOU.retrieve reads a single IOU trust line between an account and an issuer. Read-only.
+ - [iou.sellOffer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/selloffer.md): IOU.sellOffer places a DEX order to sell this IOU via an OfferCreate transaction.
+ - [iou.transfer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/transfer.md): IOU.transfer sends issued-currency value to a destination account via a Payment transaction.
+ - [iou.unlock()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/iou/unlock.md): IOU.unlock restores a frozen holder's trust line by clearing deep and individual freeze via TrustSet transactions.
+ - [token.authorize()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/authorize.md): Token.authorize opts the calling account in to holding an MPT issuance via an MPTokenAuthorize transaction.
+ - [token.clawback()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/clawback.md): Token.clawback reclaims a holder's MPT balance back to the issuer via a Clawback transaction.
+ - [token.destroy()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/destroy.md): Token.destroy destroys an MPT issuance via an MPTokenIssuanceDestroy transaction.
+ - [token.grantHolder()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/grantholder.md): Token.grantHolder lets an issuer authorize a specific holder to hold an MPT via an MPTokenAuthorize transaction.
+ - [Token](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token.md): The Token vertical in simpleXRPL issues and manages Multi-Purpose Tokens (MPTs).
+ - [token.issue()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/issue.md): Token.issue creates a new Multi-Purpose Token (MPT) issuance via an MPTokenIssuanceCreate transaction.
+ - [token.list()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/list.md): Token.list lists the MPTs an account holds or issued. Read-only.
+ - [token.lock()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/lock.md): Token.lock locks an MPT issuance or a specific holder's balance via an MPTokenIssuanceSet transaction.
+ - [token.retrieve()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/retrieve.md): Token.retrieve reads a single MPT issuance by id, with flags and XLS-89 metadata decoded. Read-only.
+ - [token.revokeHolder()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/revokeholder.md): Token.revokeHolder lets an issuer revoke a specific holder's permission to hold an MPT via an MPTokenAuthorize transaction.
+ - [token.transfer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/transfer.md): Token.transfer sends MPT units to another account via a Payment transaction.
+ - [token.unauthorize()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/unauthorize.md): Token.unauthorize opts the calling account out of holding an MPT issuance via an MPTokenAuthorize transaction.
+ - [token.unlock()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/token/unlock.md): Token.unlock unlocks an MPT issuance or a specific holder's balance via an MPTokenIssuanceSet transaction.
+ - [xrp.buyOffer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/xrp/buyoffer.md): XRP.buyOffer places a DEX order to acquire XRP, priced in an IOU, via an OfferCreate transaction.
+ - [xrp.cancelOffer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/xrp/canceloffer.md): XRP.cancelOffer cancels a standing DEX offer placed by the acting account via an OfferCancel transaction.
+ - [XRP](https://opensource.ripple.com/docs/simplexrpl/references/verticals/xrp.md): The XRP vertical in simpleXRPL handles native XRP value transfers and XRP-denominated DEX orders.
+ - [xrp.sellOffer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/xrp/selloffer.md): XRP.sellOffer places a DEX order to sell XRP for an IOU, via an OfferCreate transaction.
+ - [xrp.transfer()](https://opensource.ripple.com/docs/simplexrpl/references/verticals/xrp/transfer.md): XRP.transfer sends native XRP from one account to another via a Payment transaction.
+

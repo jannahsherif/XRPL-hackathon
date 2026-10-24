@@ -1,0 +1,1008 @@
+openapi: "3.0.0"
+info:
+  description: "Checkout end point used by Guest Checkout Tokenization Integrators to receive payload data from the Mastercard Checkout Solutions and send the results of transaction authorization back to the Mastercard. Endpoints are available to retrieve payload data and send the outcome of a payment or checkout."
+  version: "1.0.0"
+  title: "Guest Checkout Tokenization Checkout API"
+  termsOfService: "https://developer.mastercard.com/terms-of-use"
+  contact:
+    email: "apisupport@mastercard.com"
+    name: "API Support"
+    url: "https://developer.mastercard.com/support"
+  license:
+    name: "Apache 2.0"
+    url: "https://www.apache.org/licenses/LICENSE-2.0.html"
+tags:
+- name: "Checkout"
+  description: "End point to retrieve transaction credentials during checkout."
+servers:
+- description: "Production server"
+  url: "https://api.mastercard.com/src/api/digital/payments"
+- description: "Sandbox server"
+  url: "https://sandbox.api.mastercard.com/src/api/digital/payments"
+paths:
+  /transaction/credentials:
+    post:
+      summary: "Checkout end point for retrieving transaction payload."
+      description: "Requests the preparation of transaction credentials for checkout. The transaction credentials payload data is encrypted according to JSON Web Encryption (JWE) specification RFC 7516. Algorithm used to encrypt the payload is according to RFC 7518 section 4.1. Obtain the encrypted transaction credentials for an enrolled card from Secure Card on File so that it can be submitted for authorization processing and the consumer can complete the purchase."
+      operationId: "postTransactionCredentials"
+      x-mastercard-api-encrypted: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+            examples:
+              EXAMPLE - GUEST CHECKOUT TOKENIZATION:
+                value:
+                  srcClientId: "5e0d4b84-189d-4c86-822d-590602f62062"
+                  srcDpaId: "KT_GUEST_CHECKOUT_1"
+                  srcCorrelationId: "0efdfbfc-d11e-4f0b-8fe1-fb7209e7e000"
+                  serviceId: "GUEST_CHECKOUT_TOKENIZATION#MASTERCARDS_GUEST_CHECKOUT_TOKENIZATION#01"
+                  srciTransactionId: "086178df-1f8c-4367-83a3-521ffcb7fc1c"
+                  dpaTransactionOptions:
+                    transactionAmount:
+                      transactionAmount: 100
+                      transactionCurrencyCode: "INR"
+                    paymentOptions:
+                    - dynamicDataType: "CARD_APPLICATION_CRYPTOGRAM_SHORT_FORM"
+                  digitalAccountCredentials:
+                    digitalAccountReference:
+                      digitalAccountReferenceValue: "eyJraWQiOiIyMDIzMDIwNzIyMzUyMS1zYW5kYm94LWZwYW4tZW5jcnlwdGlvbi1zcmMtbWFzdGVyY2FyZC1pbnQiLCJhbGciOiJSU0EtT0FFUC0yNTYiLCJlbmMiOiJBMTI4R0NNIn0.YioNcD6KfYkieQeFr48ERk353qH0W0czzbQ_U3DAeY85A2IhpglEJhpZ7UW6wmdrYTkIieIc2AEjj9Hylo4CDjtv4Kpeg7-UhR6YoFdD-EaCsuGwfHahUy0xEVyVHJYCeq-nsiIAD7cbrB6YhnusizgM39PZRaDk3k1x99-a0WO1D_n-QoS-kXe2x2ePP7wcoDGik-Dx3tIIhf4z8BeoF2j4M-T_ym_CWZ-IPV9mHGdQVNBzM7y0qcM4XKnHs7QI4g72n95ibPiRr0NJdSXbzsd2nZr2eOgAXQLea3EAL9WntvXcJG3NV13k5VTVaoHuHdS5gUha4qR_-R1t-dSUwg.nk8v4-6aSDtJjeo2.wrUNWeOG7_WHi4W3QU0lxBn5bhRtNg0kbUQ-rAUUu3SbgsHtRrfaC67SeD44J1JHkhpEuGvDU6AVsJ0_xKSHBkOC3gCDJtWvT3KyM5VpxkXsEZvU9QcMBL3HMSSPXG9CvPpruLGlhCszRNh29qiLmVV1CaZ-ial_geEsMpkc0l4.gYn3BItXQcRIb7QnWqTxZw"
+                      digitalAccountReferenceType: "ENCRYPTED_CARD"
+        description: "Checkout Request"
+        required: true
+      responses:
+        "200":
+          description: |
+            OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResponse"
+              examples:
+                EXAMPLE - GUEST CHECKOUT TOKENIZATION:
+                  value:
+                    checkoutResponseJWS:
+                      jose_header:
+                        iss: "https://mastercard.com"
+                        iat: "1679592150"
+                        alg: "RS256"
+                        jti: "0b8bc890-5370-4fa3-97b9-cc91ecf5ef55"
+                        kid: "20230207164613-sandbox-payload-verification-src-mastercard-int"
+                      jws_payload:
+                        encryptedPayload:
+                          token:
+                            paymentToken: "5299920988476006"
+                            tokenExpirationMonth: "05"
+                            tokenExpirationYear": "2026"
+                            paymentAccountReference: "50019F5JU50MXBZB22F733MM3PAZQ"
+                            panSequenceNumber": 0
+                          srcTokenResultsData:
+                            unpredictableNumber: 47875227
+                          dynamicData:
+                            dynamicDataValue: "ADaFfPobv0S9AFRHh1InAAADFA==\""
+                            dynamicDataType: "CARD_APPLICATION_CRYPTOGRAM_SHORT_FORM"
+                        maskedCard:
+                          srcDigitalCardId: "61XJzB_BQ9qa29nGa7JZrQ000000000000US"
+                          panBin: "529992"
+                          panLastFour: "9709"
+                          tokenBinRange: "529992"
+                          tokenLastFour: "6006"
+                          digitalCardData:
+                            status: "ACTIVE"
+                            presentationName: "Test Issuer"
+                            descriptorName: "mastercard"
+                            artUri: "https://sbx.assets.mastercard.com/card-art/combined-image-asset/HIGH-MASK-3x.png"
+                            isCoBranded: false
+                            longDescription: "Test Bank for MasterCard MTF"
+                            foregroundColor: "0f0f0f"
+                          panExpirationMonth: "12"
+                          panExpirationYear: "2025"
+                          paymentCardType: "CREDIT"
+                          serviceId: "GUEST_CHECKOUT_TOKENIZATION#MASTERCARDS_GUEST_CHECKOUT_TOKENIZATION#01"
+                          dateOfCardCreated: "2023-04-06T04:26:38.136Z"
+                          dateOfCardLastUsed: "2023-07-18T19:39:26.359Z"
+                        assuranceData:
+                          cardVerificationEntity: 2
+                          cardVerificationMethod: 3
+                          cardVerificationResults: 23
+                        keyFingerprintId: "a28f0222ee06631fefdea53b61ece178a593725142df927889ddcd95680baab4"
+                      jws_signature: "eyJraWiOiIxNDkwNjQtc3RnLXNyYy1mcGFuLWVuY3J5â€¦."
+          headers:
+            X-Src-Cx-Flow-Id:
+              description: "The X-Src-Cx-Flow-Id ensures to direct all calls from the same client to the same server and maintains session affinity. When you make your initial API call, Secure Card on File responds with the X-Src-Cx-Flow-Id in the header. The X-Src-Cx-Flow-Id returned in this response can be used in the subsequent calls to ensure these calls are directed to the same server that returned the initial response."
+              schema:
+                maxLength: 255
+                pattern: "^([0-9a-f]{8}.)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(.[0-9]{10})?$"
+                type: "string"
+            X-Src-Response-Host:
+              description: "The X-Src-Response-Host is used to direct all calls from the same client to the same server to maintain session affinity. When you make your initial API call, Mastercard Checkout Solutions responds with the X-Src-Response-Host in the HTTP header. The X-Src-Response-Host that is returned will contain a site specific URL that must be used in the subsequent calls to ensure these calls are directed to the same server that returned the initial response."
+              schema:
+                maxLength: 1024
+                type: "string"
+                example: "https://ksc.services-asn.mastercard.com/"
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                INVALID_ARGUMENT:
+                  description: "It can be possible if card verification is pending and client is doing checkout with that card * Invalid consumer id associated with card and consumer not found in system. * Address not found in the system associated with the shipping address id provided in request."
+                  value:
+                    message: "Cannot process the request because it is malformed or has incorrect/missing fields or values."
+                    reason: "INVALID_ARGUMENT"
+                    status: 400
+                INVALID_ARGUMENT-CANNOT_BE_NULL-SRC-CLIENT-ID:
+                  description: "This error is related to mandatory fields are not present for `srcClientId`."
+                  value:
+                    errordetail:
+                    - message: "The supplied value cannot be null"
+                      reason: "CANNOT_BE_NULL"
+                      source: "srcClientId"
+                      sourceType: "BODY"
+                    message: "Cannot process the request because it is malformed or has incorrect/missing fields or values."
+                    reason: "INVALID_ARGUMENT"
+                    status: 400
+                INVALID_ARGUMENT-CANNOT_BE_NULL-TRANSCATION-AMOUNT-AND-CURRENCY-CODE:
+                  description: "This error is related to mandatory fields are not present for `transactionAmount`."
+                  value:
+                    errordetail:
+                    - message: "The supplied value cannot be null"
+                      reason: "CANNOT_BE_NULL"
+                      source: "confirmationData.transactionAmount.transactionAmount"
+                      sourceType: "BODY"
+                    - message: "The supplied value cannot be null"
+                      reason: "CANNOT_BE_NULL"
+                      source: "confirmationData.transactionAmount.transactionCurrencyCode"
+                      sourceType: "BODY"
+                    message: "Cannot process the request because it is malformed or has incorrect/missing fields or values."
+                    reason: "INVALID_ARGUMENT"
+                    status: 400
+                INVALID_ARGUMENT-INVALID_FORMAT-CORRELATIONID:
+                  description: "This error is related to incorrect `srcCorrelationId` format"
+                  value:
+                    errordetail:
+                    - message: "The format is not correct"
+                      reason: "INVALID_FORMAT"
+                      source: "srcCorrelationId"
+                      sourceType: "BODY"
+                    message: "Cannot process the request because it is malformed or has incorrect/missing fields or values."
+                    reason: "INVALID_ARGUMENT"
+                    status: 400
+                INVALID_ARGUMENT-INVALID_FORMAT-SRC-CLIENT-ID:
+                  description: "This error is related to incorrect `srcClientId` format"
+                  value:
+                    errordetail:
+                    - message: "The format is not correct"
+                      reason: "INVALID_FORMAT"
+                      source: "srcClientId"
+                      sourceType: "BODY"
+                    message: "Cannot process the request because it is malformed or has incorrect/missing fields or values."
+                    reason: "INVALID_ARGUMENT"
+                    status: 400
+          description: |-
+            Bad Request. Reason code of `INVALID_ARGUMENT` Identifies a malformed or invalid request. Use cases:
+
+              * Mandatory parameters in request are missing. Example, `srcClientId` or `srcDigitalCardId` values are not provided.
+              * Request parameters value has invalid format. Example, `srcClientId`, `srcDigitalCardId`,`srcCorrelationId`, `recipientIdCheckout`,  `shippingAddressId` is not in UUID format.
+              * Request have `transactionAmount` object present but its property `transactionAmount` or `transactionCurrencyCode` is not present.
+              * `srcDigitalCardId` associated card is in a `LOCKED` or `PENDING_VERIFICATION` state, or the card itself is not present in the system.
+              * System was not able to find the consumer associated with a card or the address associated with the addressId provided in request.
+              * Length of a property exceeds the maximum allowed length. Example, `srciTransactionId` parameter length is too long.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                value:
+                  message: "Unauthorized - Access Not Granted"
+                  reason: "UNAUTHENTICATED"
+                  status: 401
+          description: "Unauthorized, see error object for details, e.g. authorization token validation failure"
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                PERMISSION_DENIED:
+                  description: |-
+                    Either:
+                      * DPA ID is not present or invalid DPA id value.
+                      * Invalid client id is used.
+                      * ClientID and Service ID combination not associated with each other.
+                      * Wrong Service ID
+                      * Client onboarding is not properly done with mastercard gateway.
+                      * Value of recipientIdCheckout is not onboarded and used by client.
+                      * Consumer's status is not active."
+                  value:
+                    message: "Client does not have sufficient permission. This can happen because the client doesn't have permission, or the API has not been enabled for the client project."
+                    reason: "PERMISSION_DENIED"
+                    status: 403
+                PERMISSION_DENIED-EXPIRED-ENCRYPTIONKEY:
+                  description: "Client's registered encryption key expired."
+                  value:
+                    message: "Payload Encryption Key has expired."
+                    reason: "PERMISSION_DENIED"
+                    status: 403
+          description: "Forbidden. API will return this response if identifier validation fails."
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Internal server error. Typically a server bug. The client should report this error to the server team."
+                reason: "INTERNAL"
+                status: 500
+          description: "Internal Server Error"
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Service unavailable. Typically the server not able to serve the request temporarily. Retry after sometime."
+                reason: "UNAVAILABLE"
+                status: 503
+          description: "Service Unavailable"
+      parameters:
+      - description: "The X-Src-Cx-Flow-Id ensures to direct all calls from the same client to the same server and maintains session affinity. When you make your initial API call, Secure Card on File responds with the X-Src-Cx-Flow-Id in the header. The X-Src-Cx-Flow-Id returned in this response can be used in the subsequent calls to ensure these calls are directed to the same server that returned the initial response."
+        in: "header"
+        name: "X-Src-Cx-Flow-Id"
+        schema:
+          maxLength: 255
+          pattern: "^([0-9a-f]{8}.)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(.[0-9]{10})?$"
+          type: "string"
+          example: "34f4a04b.7602af12-a18b-4023-a476-8231ddcaefe7.1621276711"
+      - description: "The X-Src-Response-Host is used to direct all calls from the same client to the same server to maintain session affinity. When you make your initial API call, Mastercard Checkout Solutions responds with the X-Src-Response-Host in the HTTP header. The X-Src-Response-Host that is returned will contain a site specific URL that must be used in the subsequent calls to ensure these calls are directed to the same server that returned the initial response."
+        in: "header"
+        name: "X-Src-Response-Host"
+        schema:
+          maxLength: 1024
+          type: "string"
+          example: "https://ksc.services-asn.mastercard.com/"
+      tags:
+      - "Checkout"
+components:
+  schemas:
+    Address:
+      type: "object"
+      properties:
+        addressId:
+          example: "96636f7f-a5f5-4fed-ad43-5baf12511e2a"
+          format: "UUID"
+          type: "string"
+          description: "Identifier used to point to the address."
+        name:
+          example: "John Doe"
+          maxLength: 60
+          type: "string"
+          description: "Contact name for the address."
+        line1:
+          example: "114 5th ave"
+          maxLength: 75
+          type: "string"
+          description: "First line the address."
+        line2:
+          example: "Lake Street"
+          maxLength: 75
+          type: "string"
+          description: "Second line of the address."
+        line3:
+          example: ""
+          maxLength: 75
+          type: "string"
+          description: "Third line of the address."
+        city:
+          example: "NYC"
+          maxLength: 50
+          type: "string"
+          description: "City of Address."
+        state:
+          example: "NY"
+          maxLength: 30
+          type: "string"
+          description: "State of Address."
+        countryCode:
+          maxLength: 2
+          example: "US"
+          type: "string"
+          description: "Address country code. ISO 3166 alpha 2 country code."
+        zip:
+          example: "10011"
+          maxLength: 16
+          type: "string"
+          description: "Address zip/postal code."
+        createTime:
+          example: "2021-10-07T13:44:45.385Z"
+          type: "string"
+          description: "Time the address was created. Format Epoch UTC Seconds"
+        lastUsedTime:
+          example: "2021-10-07T13:44:45.385Z"
+          type: "string"
+          description: "Time the address was last used. Format Epoch UTC Seconds"
+      description: "Object for address information."
+    AssuranceData:
+      type: "object"
+      properties:
+        verificationData:
+          items:
+            $ref: "#/components/schemas/VerificationData"
+          type: "array"
+      description: "Object for information about any risk assessment functions performed by the Mastercard system."
+    Card:
+      type: "object"
+      required:
+      - "primaryAccountNumber"
+      properties:
+        primaryAccountNumber:
+          example: "5204731600014784"
+          minLength: 16
+          maxLength: 20
+          type: "string"
+          description: "A variable length, ISO/IEC 7812-compliant account number that is generated within account ranges associated with a BIN by a Card Issuer."
+        panExpirationMonth:
+          example: 10
+          minLength: 2
+          maxLength: 2
+          type: "string"
+          description: "Expiration month of the Card, expressed as a two-digit calendar month."
+        panExpirationYear:
+          example: "2022"
+          minLength: 4
+          maxLength: 4
+          type: "string"
+          description: "Expiration year of the Card, expressed as a four-digit calendar year."
+        cardSecurityCode:
+          example: "123"
+          minLength: 3
+          maxLength: 6
+          type: "string"
+          description: "Card security code/CVV2"
+        cardholderFullName:
+          example: "John Doe"
+          minLength: 0
+          maxLength: 256
+          type: "string"
+          description: "Cardholder Full Name."
+        cardholderFirstName:
+          example: "John"
+          minLength: 0
+          maxLength: 256
+          type: "string"
+          description: "Cardholder First Name."
+        cardholderLastName:
+          example: "Doe"
+          minLength: 0
+          maxLength: 256
+          type: "string"
+          description: "Cardholder Last Name."
+        billingAddress:
+          $ref: "#/components/schemas/Address"
+        paymentAccountReference:
+          example: "5001EUMYTT3AESCZGUEC77KPCLETI"
+          minLength: 0
+          maxLength: 256
+          type: "string"
+          description: |
+            A non-financial reference assigned to each unique PAN that's used to link the payment account of that PAN to affiliated payment tokens.
+    CheckoutRequest:
+      type: "object"
+      required:
+      - "srcClientId"
+      - "srcDpaId"
+      - "serviceId"
+      properties:
+        srcClientId:
+          $ref: "#/components/schemas/srcClientId"
+        srcDpaId:
+          example: "297b379a-663c-4e31-a019-b3a48701b8ae"
+          type: "string"
+          description: |
+            The registered identifier for the Digital Payment Application (DPA) accessing the service.
+
+            __Conditional__: Required if you are a Merchant directly integrating with Mastercard Checkout Solutions (MCS) APIs, a Payment Service Provider (PSP) integrating On-Behalf-Of (OBO) a Merchant, a Payment Facilitator, or if you are enrolling in the Secure Card on File (SCOF) QR program.
+        serviceId:
+          $ref: "#/components/schemas/serviceId"
+        dpaTransactionOptions:
+          $ref: "#/components/schemas/DpaTransactionOptions"
+        digitalAccountCredentials:
+          $ref: "#/components/schemas/DigitalAccountCredentials"
+      description: |
+        The CheckoutRequest is used to retrieve a token and  dynamic data for a card enrolled into Mastercard Checkout Solutions. The token, dynamic data, and other parameters can be used for payment authorization.
+
+        The CheckoutRequest must contain the following values:
+        * serviceId
+        * srcClientId
+        * srcDigitalCardId
+
+        The following values are conditional:
+        * srcDpaId
+        * transactionAmount
+    CheckoutResponse:
+      type: "object"
+      properties:
+        checkoutResponseJWS:
+          $ref: "#/components/schemas/CheckoutResponseJWS"
+      description: "The CheckoutResponse for a srcDigitalCardId mapped to a token in Secure Card on File via Mastercard Checkout Solutions will include a DRSP payload containing the associated token and cryptogram for payment authorization."
+      required:
+      - "checkoutResponseJWS"
+    CheckoutResponseJWS:
+      type: "object"
+      required:
+      - "jose_header"
+      - "jws_payload"
+      - "jws_signature"
+      properties:
+        jose_header:
+          $ref: "#/components/schemas/JoseHeader"
+        jws_payload:
+          $ref: "#/components/schemas/CheckoutResponseJWSPayload"
+        jws_signature:
+          example: "eyJraWiOiIxNDkwNjQtc3RnLXNyYy1mcGFuLWVuY3J5Ã¢â‚¬Â¦."
+          type: "string"
+          description: "The Mastercard Checkout Solutions (MCS) JWS signature that the Integrator can use to validate the integrity of the data in the checkout response."
+      description: "It is a JWS signed by Mastercard Checkout Solutions so that the Integrators can validate the integrity of the data in the checkout response."
+      example: "eyJraWiOiIxNDkwNjQtc3RnLXNyYy1mcGFuLWVuY3J5…."
+    CheckoutResponseJWSPayload:
+      type: "object"
+      required:
+      - "srcCorrelationId"
+      - "maskedCard"
+      - "encryptedPayload"
+      properties:
+        srcCorrelationId:
+          format: "String"
+          pattern: "([0-9a-f]{8}.)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+          example: "779165e0-1905-4edd-89fa-be46497b5044"
+          type: "string"
+          description: |
+            A unique ID that correlates a series of two or more requests to a single session of activity. Mastercard Checkout Solutions will by default return a new srcCorrelationId in each response, but Integrators may choose to populate previously used srcCorrelationIds in subsequent requests to correlate their activity under a single ID. This can be done by providing a Mastercard generated srcCorrelationId in the request, or by generating your own ID in the same format. SrcCorrelationId is used for tracking and troubleshooting purposes within Mastercard's ecosystem.
+        encryptedPayload:
+          $ref: "#/components/schemas/Payload"
+        maskedCard:
+          $ref: "#/components/schemas/MaskedCard"
+        assuranceData:
+          $ref: "#/components/schemas/AssuranceData"
+        keyFingerprintId:
+          $ref: "#/components/schemas/keyFingerprintId"
+      description: |
+        The encryptedPayload property of CheckoutResponseJWSPayload is formatted as a string, which should be cast to the Payload schema.
+    DigitalAccountCredentials:
+      type: "object"
+      required:
+      - "digitalAccountReference"
+      properties:
+        digitalAccountReference:
+          $ref: "#/components/schemas/DigitalAccountReference"
+      description: |
+        Container for digital account reference.
+
+        __Conditional__: Required if Integrator would like to use the underlying card in Guest Checkout Tokenization. The checkout response for an eligible card will contain a token and cryptogram.
+    DigitalAccountReference:
+      type: "object"
+      required:
+      - "digitalAccountReferenceValue"
+      - "digitalAccountReferenceType"
+      properties:
+        digitalAccountReferenceValue:
+          example: "eyJraWQiOiIxNDkwNjQtc3RnLXNyYy1mcGFuLWVuY3J5cHRpb24iLCJlbmMiOiJBMTI4R0NNIiwiYWxnIjoiUlNBLU9BRVAtMjU2In0.iLovKOMnT11BKASjmkvqR5d_ApojucBiG9tAuH5Qt2hRAu31-oUiEiGC5ctJ2s2OM7UUSlnuB7DHqFxhCTSbUsQ0cyUTLQ4lR9-t1c4KamR-UDbreoGgDRjC7ZLhFOIrLBXaW9eMHJKT9BoqwlyfQVM_5LkQVDzjA5zMIrgpg8VcsXmDeTGeS63ee7Ibhpk7S5jqD856xgRERMuerh0iI1sLqVhDkF5Ququ46cIAt7OstgybWLTXyEoSHWQt_qGoaDDD2Coa4ESOUNAuViMK1JSRK3zG9CtNtnnlhjqU1smMDTCfW02ajZsBDRldv3OmJF3rr0M2zUEPMF03xfG9lQ.4ktI6_pukbVgiUmp.v30MLJGPf_GMD2ubjyf05TWI15FmC7vsVNdBRrsqMGev8N0dcANZqJkYNBvM0JwLMfQdIIJUNcFBNGsobDvRMaQSxK35EwQ-lyvTlpArP90pSq9q9oJRNJ9YSvsxI9UML-MppQC89Ck7vnjef-Df1Vo7AuGmD_2POE0LaRyh6KS4Jbk0pFt4qJnAcFPxXwB0K0ODOXrq3PaxUfKUt-gVcpN5iYWJcoJivUisbpEtDb5Asa4nQTMdEuxcynMslDB4FTn6Z0OrwnU1PJxVvjegQBWMjqcCVcSWHB6Fp8KyJdIKtdG63Ui5kNeRjXgGnl2uPd97_Q_1yEWzce21hvDnfZexKkbYn43tTtC3QdWbCj8nq41wzZR-w0541Z_3qrgPGf4cUU9sv_wPun6iEvVbn4lYNqBbRKtpWhY8oE6pgCU.KB4ME3pTkX3vt4L7cwdK9w"
+          type: "string"
+          description: |
+            This value corresponds to the chosen digitalAccountReferenceType and is used by Integrators who would like to enroll the underlying card.
+
+            * If digitalAccountReferenceType = ENCRYPTED_CARD, this field should carry the JWE[card]. The card must be encrypted using the steps in this tutorial- https://developer.mastercard.com/mastercard-checkout-solutions/tutorial/perform-encryption/.
+
+            * If digitalAccountReferenceType = SRC_DIGITAL_CARD_ID, this field should carry the srcDigitalCardId value.
+        digitalAccountReferenceType:
+          $ref: "#/components/schemas/DigitalAccountReferenceType"
+      description: |
+        Object for digital account reference value and type. Applicable for Guest Checkout Tokenization
+    DigitalAccountReferenceType:
+      type: "string"
+      enum:
+      - "ENCRYPTED_CARD"
+      - "ENCRYPTED_PAYMENT_TOKEN"
+      - "SRC_DIGITAL_CARD_ID"
+      description: |-
+        Type of digitalAccountReferenceValue being passed to Mastercard Checkout Solutions (MCS) for enrollment. The digitalAccountReferenceType will dictate the content of the digitalAccountReferenceValue parameter. Accepted enums are:
+
+        * `ENCRYPTED_CARD` - Encrypted object for card data. The card must be encrypted using the steps in this tutorial- https://developer.mastercard.com/mastercard-checkout-solutions/tutorial/perform-encryption/.
+
+        * `SRC_DIGITAL_CARD_ID` - A unique identifier that represents the token associated with a card enrolled into Mastercard Checkout Solutions (MCS).
+
+        * `ENCRYPTED_PAYMENT_TOKEN` - Encrypted object for token.
+      example: "ENCRYPTED_CARD"
+    DigitalCardData:
+      type: "object"
+      properties:
+        status:
+          $ref: "#/components/schemas/DigitalCardStatus"
+        presentationName:
+          maxLength: 64
+          example: "Bank"
+          type: "string"
+          description: "The issuer name."
+        descriptorName:
+          maxLength: 64
+          example: "Bank Rewards Mastercard"
+          type: "string"
+          description: "Issuers name their card portfolios, and they will create both long descriptions and short descriptions to market their cards to Cardholders. This is the short description for a card."
+        artUri:
+          maxLength: 1024
+          example: "https://sandbox.assets.mastercard.com/card-art/combined-image-asset/MyBank-mastercard.png"
+          type: "string"
+          description: "URI that digitally represents the physical look of a card. This card art image can be used for presentation purposes in user experiences and is provided by Issuers."
+        isCoBranded:
+          example: true
+          type: "boolean"
+          description: "Indicates whether the card is co-branded"
+        longDescription:
+          minLength: 1
+          maxLength: 256
+          example: "Bank Double Cash Back Rewards Mastercard"
+          type: "string"
+          description: "Banks name their card portfolios, and they will create both long descriptions and short descriptions to market their cards to Cardholders. This is the long description for a card."
+        foregroundColor:
+          minLength: 3
+          maxLength: 6
+          example: "FF5733"
+          type: "string"
+          description: "Foreground color used to overlay text on top of the card image. This is always returned in Product Configuration object."
+      description: "Object for card data including token info, status, card art, and card descriptors."
+    DigitalCardStatus:
+      type: "string"
+      description: |
+        State of the digital card at any given time in the Mastercard Checkout Solutions (MCS) system.
+
+        * `ACTIVE` - Token is active and able to transact.
+        * `SUSPENDED` - Token is suspended by the Issuer and unable to transact.
+        * `CANCELLED` - Token is deleted by the Issuer and unable to transact.
+      enum:
+      - "ACTIVE"
+      - "SUSPENDED"
+      - "CANCELLED"
+    DpaTransactionOptions:
+      type: "object"
+      properties:
+        transactionAmount:
+          $ref: "#/components/schemas/TransactionAmount"
+        paymentOptions:
+          items:
+            $ref: "#/components/schemas/PaymentOptions"
+          type: "array"
+          description: "Object for the Integrator to define the type of checkout payload they would like to receive."
+      description: |
+        Object for Integrator to indicate checkout payload related preferences.
+      required:
+      - "transactionAmount"
+    DynamicData:
+      type: "object"
+      required:
+      - "dynamicDataType"
+      properties:
+        dynamicDataValue:
+          example: "jjoutwsdgfdou124354ljlsdhgout968957"
+          type: "string"
+          description: "Value of the cryptogram corresponding to dynamicDataType."
+        dynamicDataType:
+          $ref: "#/components/schemas/DynamicDataType"
+        dynamicDataExpiration:
+          example: "2022-10-07T13:44:45.385Z"
+          type: "string"
+          description: "Expiry period of the dynamic data in UTC Format."
+      description: |
+        Object for cryptogram corresponding to the payment token.
+
+        Cryptograms are dynamic data that is submitted along with the payment token for payment authorization to decrypt the token and retrieve the underlying Account PAN.
+    DynamicDataType:
+      type: "string"
+      description: |
+        Type of dynamic data required by the integrator to support a checkout request.
+
+        * `CARD_APPLICATION_CRYPTOGRAM_SHORT_FORM` (DSRP): DSRP - Dynamic Secure Remote Payments cryptogram is a type of dynamic data which integrator will have to pass within Dynamic Payment Data field (DE104 SE001) of the payment authorization.
+      enum:
+      - "CARD_APPLICATION_CRYPTOGRAM_SHORT_FORM"
+      example: "CARD_APPLICATION_CRYPTOGRAM_SHORT_FORM"
+    Error:
+      type: "object"
+      required:
+      - "status"
+      - "reason"
+      - "message"
+      properties:
+        status:
+          example: 200
+          format: "int32"
+          type: "integer"
+          description: "HTTP response status codes."
+        reason:
+          example: "The request contains card type, but the card type does not correspond with the card number (e.g. card type = Visa; card number = MasterCard)"
+          type: "string"
+          description: "Error detailed reason."
+        message:
+          example: "Card type validation message"
+          type: "string"
+          description: "Error message details"
+        errordetail:
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+          type: "array"
+          description: "List of Errors"
+    ErrorDetail:
+      type: "object"
+      required:
+      - "reason"
+      properties:
+        reason:
+          $ref: "#/components/schemas/ErrorDetailReason"
+        message:
+          example: "Card type validation message"
+          type: "string"
+          description: "Error message details"
+        sourceType:
+          $ref: "#/components/schemas/ErrorSourceType"
+        source:
+          example: "CARD"
+          type: "string"
+          description: "Error source field."
+    ErrorDetailReason:
+      type: "string"
+      description: "Error reason"
+      enum:
+      - "CANNOT_BE_NULL"
+      - "INVALID_VALUE"
+      - "INVALID_FORMAT"
+      - "ALREADY_EXISTS"
+      - "INVALID_STATE"
+      - "CORRUPT_DATA"
+      - "CANNOT_BE_DUPLICATE_OR_NULL"
+      - "INVALID_DATA_FOR_VER_TYPE-22"
+      - "LIMIT_EXCEED"
+      - "NOT_FOUND"
+      - "EXPIRED"
+      - "CARD_NOT_FOUND"
+      - "SUSPENDED_CARD"
+      - "NO_RESPONSE_FROM_ISSUER"
+      - "PAN_INELIGIBLE"
+      - "TOKENIZATION_INELIGIBLE"
+      - "ISSUER_DECLINED"
+      - "NOT_SUPPORTED"
+      - "MULTIPLE_FOUND"
+      - "INACTIVE_CARD"
+      - "RESTRICTED"
+      - "SANCTIONED"
+    ErrorSourceType:
+      type: "string"
+      description: "Source of error"
+      enum:
+      - "BODY"
+      - "HEADER"
+      - "QUERY"
+      - "PATH"
+    JoseHeader:
+      type: "object"
+      required:
+      - "alg"
+      - "kid"
+      - "iss"
+      - "jti"
+      - "iat"
+      properties:
+        alg:
+          example: "RS256"
+          type: "string"
+          description: "RSA256 algorithm used to sign or encrypt the JWS."
+        kid:
+          example: "1e9gdk"
+          type: "string"
+          description: "Mastercard will use a private key to sign the JWS payload, and the KID indicates the corresponding public key ID which Integrators should use from the public Mastercard URL to verify the signature."
+        iss:
+          example: "mastercard.com"
+          type: "string"
+          description: "The URI of the issuing party, which is Mastercard."
+        jti:
+          example: "279684de-9523-4f7b-96a8-da0e2bd1e005"
+          type: "string"
+          description: "Unique identifier generated by Mastercard for each JWS payload (typically, a UUID formatted string)."
+        iat:
+          example: "1311280970"
+          type: "string"
+          description: "Time in UTC epoc format at which the JWS was generated and issued to the requester."
+      description: "The Header for Checkout JWS generated using a JWS compliant library."
+    MaskedCard:
+      type: "object"
+      required:
+      - "panLastFour"
+      - "dateOfCardCreated"
+      - "panBin"
+      - "srcDigitalCardId"
+      - "digitalCardData"
+      properties:
+        srcDigitalCardId:
+          example: "61XJzB_BQ9qa29nGa7JZrQ000000000000US"
+          type: "string"
+          description: "A unique identifier that represents the token associated with a card enrolled into Mastercard Checkout Solutions. Use this srcDigitalCardId in subsequent Checkout API requests to retrieve a DRSP payload containing the associated token and cryptogram for payment authorization. Alternatively, use the srcDigitalCardId in a Get Card request to retrieve the maskedCard details."
+        panBin:
+          example: "520473"
+          type: "string"
+          description: "The first six digits of a PAN, typically the issuer BIN, in an unmasked format."
+        panLastFour:
+          example: "9223"
+          type: "string"
+          description: "Attribute of the Payment Card that represents the Last four digits of the PAN included in an unmasked form."
+        tokenBinRange:
+          example: "5234"
+          type: "string"
+          description: "Specific BIN range or subset of the BIN Range that has been designated only for the purpose of issuing Payment Tokens in an unmasked form."
+        tokenLastFour:
+          example: "7217"
+          type: "string"
+          description: "Last four digits of the payment token included in an unmasked form."
+        digitalCardData:
+          $ref: "#/components/schemas/DigitalCardData"
+        panExpirationMonth:
+          example: "10"
+          minLength: 2
+          maxLength: 2
+          type: "string"
+          description: "Expiration month of the Payment Card expressed as a two-digit calendar month used for presentation purposes."
+        panExpirationYear:
+          example: "2024"
+          minLength: 4
+          maxLength: 4
+          type: "string"
+          description: "Expiration year of the Payment Card expressed as four-digit calendar year, used for presentation purposes."
+        paymentCardType:
+          enum:
+          - "CREDIT"
+          - "DEBIT"
+          - "PREPAID"
+          - "COMBO"
+          - "FLEX"
+          example: "CREDIT"
+          maxLength: 32
+          type: "string"
+          description: "Conveys the card type. Note that COMBO and FLEX are for applicable regions only."
+        serviceId:
+          $ref: "#/components/schemas/serviceId"
+        dateOfCardCreated:
+          example: "2021-11-25T14:51:03.811Z"
+          type: "string"
+          description: "Date (in UTC) when card was enrolled"
+        dateOfCardLastUsed:
+          example: "2021-11-25T14:51:03.811Z"
+          type: "string"
+          description: "Date (in UTC) when card was last used for a transaction"
+      description: "Object for information related to an enrolled card into Mastercard Checkout Solutions - details include card art, masked PAN information, and token data."
+    Payload:
+      type: "object"
+      properties:
+        card:
+          $ref: "#/components/schemas/Card"
+        token:
+          $ref: "#/components/schemas/PaymentToken"
+        shippingAddress:
+          $ref: "#/components/schemas/Address"
+        consumerEmailAddress:
+          example: "abc@mastercard.com"
+          type: "string"
+          description: "Consumer-provided email address."
+        consumerFirstName:
+          example: "John"
+          type: "string"
+          description: "Consumer-provided first name."
+        consumerLastName:
+          example: "Doe"
+          type: "string"
+          description: "Consumer-provided last name."
+        consumerFullName:
+          example: "John Doe"
+          type: "string"
+          description: "Consumer-provided full name."
+        consumerMobileNumber:
+          $ref: "#/components/schemas/PhoneNumber"
+        consumerNationalIdentifier:
+          example: "12345678"
+          type: "string"
+          description: "Geographic-specific, nationally-provided identifier for the Consumer."
+        srcTokenResultsData:
+          $ref: "#/components/schemas/SrcTokenResultsData"
+        dynamicData:
+          $ref: "#/components/schemas/DynamicData"
+      description: |
+        Object for the signed and encrypted payload in JWE format. Refer to Payload object for additional data.
+    PaymentOptions:
+      type: "object"
+      properties:
+        dynamicDataType:
+          $ref: "#/components/schemas/DynamicDataType"
+      description: "Object for the Integrator to define the type of checkout payload they would like to receive."
+      required:
+      - "dynamicDataType"
+    PaymentToken:
+      type: "object"
+      required:
+      - "paymentToken"
+      - "tokenExpirationMonth"
+      - "tokenExpirationYear"
+      properties:
+        paymentToken:
+          example: "5299920000000149"
+          type: "string"
+          description: "The unique token for the enrolled PAN which can be used in authorization as per ISO/IEC 7812 format."
+        tokenExpirationMonth:
+          example: "10"
+          minLength: 2
+          maxLength: 2
+          type: "string"
+          description: |
+            Expiration month of the token expressed as a two-digit calendar month. Supplied when specified for the Payment Token.
+        tokenExpirationYear:
+          example: "2022"
+          minLength: 4
+          maxLength: 4
+          type: "string"
+          description: |
+            Expiration year of the token expressed as four-digit calendar year. Supplied when specified for the Payment Token.
+        paymentAccountReference:
+          example: "5001EUMYTT3AESCZGUEC77KPCLETI"
+          type: "string"
+          description: "A non-financial reference assigned to each unique PAN and used to link a Payment Account represented by that PAN to affiliated Payment Tokens."
+        panSequenceNumber:
+          minLength: 2
+          maxLength: 20
+          example: "01"
+          type: "string"
+          description: "Application PAN sequence number for the token that can be provided in DE 23 of authorization."
+      description: "Object for token meta data."
+    PhoneNumber:
+      type: "object"
+      required:
+      - "countryCode"
+      - "phoneNumber"
+      properties:
+        countryCode:
+          example: "1"
+          minLength: 1
+          maxLength: 4
+          type: "string"
+          description: "Country code for phone numbers, formatted as an international calling code. Input should only contain numbers, without the plus sign."
+        phoneNumber:
+          example: "1234567890"
+          type: "string"
+          description: "Phone number without country code."
+      description: "Consumer's Phone number. Conditional : Required for Token Authentication Framework. Mandatory if no email address is provided."
+    SrcTokenResultsData:
+      type: "object"
+      properties:
+        unpredictableNumber:
+          example: "fa9e0426"
+          type: "string"
+          description: "Optional four-byte binary data that can be randomly generated by the Integrator and base64 encoded to provide variability and uniqueness to the generation of a cryptogram."
+        tokenRequestorId:
+          example: "342143434234"
+          type: "string"
+          description: "The Id of the Token Requestor"
+      description: |
+        Object for the unpredictableNumber provided by the Integrator that has been injected into the cryptogram.
+    TransactionAmount:
+      type: "object"
+      required:
+      - "transactionAmount"
+      - "transactionCurrencyCode"
+      properties:
+        transactionAmount:
+          example: "100.12"
+          minimum: 0.0
+          type: "number"
+          description: "Numeric value of transaction amount and must be positive. Fractions, if present in the transaction amount value, will be affixed with zero/s to match the minor unit of transaction currency in question. Maximum value allowed will be 13 digits (including decimal point and affixed fractions)."
+        transactionCurrencyCode:
+          example: "USD"
+          pattern: "^[0-9a-zA-Z]{3,3}$"
+          type: "string"
+          description: "ISO 4217 three-digit currency code for the transaction."
+      description: |
+        __Conditional__: An object for transaction amount details that must be provided for Mastercard Merchant Presented QR:SRC program, or if you need to receive a v3 cryptogram. A v3 cryptogram is an enhanced cryptogram used for the Token Authentication Framework (TAF), which strengthens the security of a transaction by linking it to a specific amount and merchant.
+    VerificationData:
+      type: "object"
+      required:
+      - "verificationType"
+      - "verificationEntity"
+      - "verificationMethod"
+      - "verificationResults"
+      - "verificationTimestamp"
+      properties:
+        verificationType:
+          $ref: "#/components/schemas/VerificationType"
+        verificationEntity:
+          maxLength: 64
+          example: "01"
+          type: "string"
+          description: |-
+            <p>Entity performing or initiating Cardholder authentication (e.g., Mastercard Checkout Solutions (MCS) System = "02").</p>
+            <p>Valid values are:</p>
+            <ul>
+              <li>"01" - Integrator</li>
+              <li>"02" - Mastercard Checkout Solutions (MCS)</li>
+              <li>"03" - Participating Issuer</li>
+              <li>"06" -> "99" - Others</li>
+            <ul>
+        verificationMethod:
+          maxLength: 64
+          example: "01"
+          type: "string"
+          description: |-
+            <p>Cardholder authentication method used by the Issuer (e.g., 3-D Secure (3DS) ACS = "01").</p>
+              <ul>
+                <li>"01" - 3-D Secure (3DS) ACS</li>
+                <li>"06" - Proprietary method of authentication</li>
+                <li>"04" - A shared secret between the Card Issuer and the Cardholder such as One Time Passcode (OTP), activation code</li>
+              <ul>
+        verificationResults:
+          maxLength: 64
+          example: "01"
+          type: "string"
+          description: |-
+            <p>Indicates whether the Cardholder was verified or not, and what the results are when verified. Results can be:</p>
+            <ul>
+              <li>"01" - Verified</li>
+              <li>"02" - Not Verified</li>
+              <li>"03" - Not Performed</li>
+              <li>"04" - Not Required</li>
+            <ul>
+        verificationTimestamp:
+          example: "1633632285"
+          type: "string"
+          description: "Date and time when the verification was conducted. Format Epoch UTC Seconds."
+        additionalData:
+          format: "byte"
+          example: "eyJ0eXBlIjoiUFJPUFJJRVRBUlkiLCJjZXJ0aWZpZWRNZmFNZXRob2RJZCI6IjQzU0E1IiwiZXh0ZXJuYWxNZmFNZXRob2RJbnN0YW5jZUlkIjoiYmY4YzViMmItMjhjZS00OGQ4LWFjYmMtY2M4MmY1MTQ3OGM2IiwibWZhTWV0aG9kSW5zdGFuY2VJZCI6InBkMjk1YjJiLTY2Y2UtNDhkOC1hY2JjLWNjODJmNTE0NzlkOCIsImFzc2VydGlvbiI6ImV5SjBlWEFpT2lKS1YxUXJaWGgwTG1GemMyVnlkR2x2Ymw5MGIydGxiaUlzSW1Gc1p5STZJbEpUTWpVMkluMC5ld29nSUNKemRXSWlPaUFpWm1GbU5qZGtZVFV0Wm1Ga1pTMDBaR1JpTFdFeFlUVXRZVFEwTlRNd01UVTRZams0SWl3S0lDQWlZWFYwYUdWdWRHbGpZWFJwYjI1U1pYTjFiSFFpT2lBaU1ERWlMQW9nSUNKamIyMXdiR1YwWldSQmRDSTZJREUyT0RNd01EWTRNak1zQ2lBZ0ltTmxjblJwWm1sbFpFMUdRVTFsZEdodlpFbGtJam9nSWpRelUwRTFJaXdLSUNBaWFYTnpJam9nSW1oMGRIQnpPaTh2YldGemRHVnlZMkZ5WkM1amIyMGlMQW9nSUNKdFpYSmphR0Z1ZEU1aGJXVWlPaUFpYldWeVkyaGhiblJPWVcxbElpd0tJQ0FpWVhWa0lqb2dJbWgwZEhCek9pOHZiV0Z6ZEdWeVkyRnlaQzVqYjIwaUxBb2dJQ0poZFhSb1pXNTBhV05oZEdsdmJrMWxkR2h2WkNJNklDSXdOaUlzQ2lBZ0ltRjFkR2hsYm5ScFkyRjBhVzl1Um1GamRHOXljeUk2SUNJd01UQTFJaXdLSUNBaWRISmhibk5oWTNScGIyNUJiVzkxYm5RaU9pQWlNVEF1TURjaUxBb2dJQ0p6Y21ORWFXZHBkR0ZzUTJGeVpFbGtJam9nSW1JM1lUWmlOV1JqTFRrek5XTXROREkxWVMwNFpXSXdMV1JrWXpreE1HUmtZamswWVNJc0NpQWdJbVY0Y0NJNklERTJPRE13TURjM01qTXNDaUFnSW0xbVlVMWxkR2h2WkVsdWMzUmhibU5sU1dRaU9pQWljR1F5T1RWaU1tSXROalpqWlMwME9HUTRMV0ZqWW1NdFkyTTRNbVkxTVRRM09XUTRJaXdLSUNBaWFXRjBJam9nTVRZNE16QXdOamd5TXl3S0lDQWlhblJwSWpvZ0ltRmpZelJtWldZeUxXVTJNV1F0TkdaaU1pMWhZV1kxTFRNMk1tRXpZVEptT0dVeU9TSXNDaUFnSW1GMWRHaGxiblJwWTJGMGFXOXVVbVZoYzI5dWN5STZJRnNLSUNBZ0lDSlVVa0ZPVTBGRFZFbFBUbDlCVlZSSVJVNVVTVU5CVkVsUFRpSUtJQ0JkQ24wLjR5ZDVFMzltVTVFSFJMdXhWYUk2cjhMNmpzZ0pnb1RuZE1GalJ5NXNHdUkifQ=="
+          type: "string"
+          description: "Object for data collected during Cardholder verification. The format may vary based on authentication method used."
+        verificationEvents:
+          example:
+          - "01"
+          items:
+            type: "string"
+          type: "array"
+          description: |-
+            <p>Event that prompted the Cardholder authentication (e.g., Payment Transaction = "01").</p>
+            <p>For verificationType CARDHOLDER, valid values are:</p>
+            <ul>
+              <li>"01" - Payment Transaction</li>
+              <li>"02" - Add Card/Card Enrollment</li>
+            <ul>
+      description: "Object for verification related information generated during authentication, depending on the type of verification."
+    VerificationType:
+      type: "string"
+      enum:
+      - "CARDHOLDER"
+      description: "Type of authentication carried out on the entity. Currently, Mastercard Checkout Solutions (MCS) only supports \"CARDHOLDER\"."
+    keyFingerprintId:
+      type: "string"
+      description: "Mastercard will use the encryption key associated with the supplied KID to encrypt the payload. If not supplied, the key which is marked as default will be used."
+      example: "nwzNuN9upxolVsr6q0I/phcnfA/ZlaJ2gmAJiogMCwM"
+    serviceId:
+      type: "string"
+      description: "A unique identifier assigned by Mastercard for which tokens are created uniquely for the entity onboarded."
+      example: "SECURE_COF_MERCHANT_OBO#SRC4M-OBO-ALL4PETS#01"
+    srcClientId:
+      type: "string"
+      pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+      description: "A unique identifier assigned by Mastercard during onboarding which signifies the responsible party Integrating to Mastercard Checkout Solutions (MCS)."
+      example: "eccbf087-f159-4d69-b31d-00bec75c0474"
+  securitySchemes:
+    jwtBearerAuth:
+      type: "http"
+      scheme: "bearer"
+      bearerFormat: "JWT"
+      description: "Bearer. Carries one of the supported authorization types, structured as a JWT, generated and signed by an Identity Provider. Used to identify the associated customer account profile, and attests that the requester is authorized to access this data."
+    xOpenApiClientId:
+      type: "apiKey"
+      in: "header"
+      name: "x-openapi-clientid"
+      description: "Open API key to make the server to server call to Mastercard SRC System."

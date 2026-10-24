@@ -1,0 +1,1898 @@
+openapi: 3.0.3
+info:
+  description: >-
+    Mastercard's Card‑Add APIs allow integrators to identify existing Click to Pay profiles, retrieve associated card details, 
+    and obtain an enrollment reference to provision cards into supported tokenization destinations such as Secure Card‑on‑File.   
+  version: 1.0.0
+  title: "Card‑Add API"
+  termsOfService: 'https://developer.mastercard.com/terms-of-use'
+  contact:
+    name: API Support
+    email: apisupport@mastercard.com
+    url: https://developer.mastercard.com/support
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+servers:
+  - description: Production server
+    url: https://api.mastercard.com/src/api/digital
+  - description: Sandbox server
+    url: https://sandbox.api.mastercard.com/src/api/digital
+tags:
+  - name: Consumer
+    description: Integrators can use the Consumer APIs to determine whether a consumer profile exists, authenticate consumers, and retrieve consumer profile information.
+  - name: Cross Enrollment
+    description: Integrators can use the Cross Enrollment API to retrieve enrollment data and encrypted billing information.
+paths:
+  /checkout/identities/lookup:
+    post:
+      summary: Identify Click to Pay profiles using email or phone number
+      description: >-
+        The Identity Lookup operation utilizes a provided Consumer Identity (email address or mobile phone number) to determine whether it is associated with a Click to Pay Profile.
+      operationId: lookupIdentity
+      tags:
+        - Consumer
+      parameters:
+        - $ref: '#/components/parameters/xSrcFlowIdHeader'
+        - $ref: '#/components/parameters/XSrcResponseHost'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityLookup'
+        description: Contains the consumer identifier details for the identity lookup request.
+        required: true
+      responses:
+        '200':
+          description: >-
+            OK. The 'recognized' value indicates whether the SRC system recognized the specified identity. If an error occurs, the response contains only the 'error' object.
+          headers:
+            X-Src-Cx-Flow-Id:
+              $ref: '#/components/headers/X-Src-Cx-Flow-Id-Header'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityLookupResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /checkout/identities/validation/initiate:
+    post:
+      summary: Initiate consumer identity validation
+      description: >-
+        The Initiate Identity Validation operation starts a process to verify that the consumer has access to the claimed consumer identity.
+      operationId: createIdentityVerification
+      tags:
+        - Consumer
+      parameters:
+        - $ref: '#/components/parameters/xSrcFlowIdHeader'
+        - $ref: '#/components/parameters/XSrcResponseHost'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityVerification'
+        description: Contains the data required to create an identity verification request.
+        required: true
+      responses:
+        '200':
+          description: >-
+            OK. If no technical errors occur, the service returns HTTP 200 and includes 'idVerificationId', which identifies the initiated verification process.
+          headers:
+            X-Src-Cx-Flow-Id:
+              $ref: '#/components/headers/X-Src-Cx-Flow-Id-Header'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityVerificationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /checkout/identities/validation/complete:
+    post:
+      summary: Validate a consumer identity verification request
+      description: >-
+        The Complete Identity Validation operation validates the one-time password (OTP) provided by the consumer and returns an identity token (idToken) after successful validation.
+      operationId: validateIdentity
+      tags:
+        - Consumer
+      parameters:
+        - $ref: '#/components/parameters/xSrcFlowIdHeader'
+        - $ref: '#/components/parameters/XSrcResponseHost'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityValidation'
+        description: Contains the consumer identifier details for identity validation.
+        required: true
+      responses:
+        '200':
+          description: >-
+            OK. The response body contains the consumerAuthorization object. If an error occurs, the response contains only the error object.
+          headers:
+            X-Src-Cx-Flow-Id:
+              $ref: '#/components/headers/X-Src-Cx-Flow-Id-Header'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityValidationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /checkout/profiles/prepare:
+    post:
+      summary: Prepare customer profiles and cards for Click to Pay checkout
+      description: >-
+        The Prepare Profiles operation returns a list of eligible consumer profiles and associated cards after successful validation of the identity token (idToken).
+      operationId: fetchCustomerProfile
+      tags:
+        - Consumer
+      parameters:
+        - $ref: '#/components/parameters/xSrcFlowIdHeader'
+        - $ref: '#/components/parameters/XSrcResponseHost'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerProfileInquiry'
+        description: Contains a list of federated ID tokens for the profile request.
+        required: true
+      responses:
+        '200':
+          description: |
+            OK
+            customer account profile details included in the response body
+          headers:
+            X-Src-Cx-Flow-Id:
+              $ref: '#/components/headers/X-Src-Cx-Flow-Id-Header'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerProfileResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /checkout/cross-enrollment-data:
+    post:
+      summary: Create or retrieve cross-enrollment data
+      description: >-
+        Retrieve enrollment data required to enroll the selected card into a destination tokenization program, such as Secure Card on File. Optionally, integrators can retrieve the encrypted billing address associated with the card.
+      operationId: createCrossEnrollmentData
+      tags:
+        - Cross Enrollment
+      parameters:
+        - $ref: '#/components/parameters/xSrcFlowIdHeader'
+        - $ref: '#/components/parameters/XSrcResponseHost'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrossEnrollmentData'
+        description: Contains the data required to create or retrieve cross-enrollment data.
+        required: true
+      responses:
+        '200':
+          description: >
+            OK
+          headers:
+            X-Src-Cx-Flow-Id:
+              $ref: '#/components/headers/X-Src-Cx-Flow-Id-Header'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrossEnrollmentDataResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+
+components:
+  parameters:
+    XSrcResponseHost:
+      in: header
+      name: X-Src-Response-Host
+      description: Site affinity header that maintains the same site across all business-to-business integration channels.
+      required: false
+      schema:
+        type: string
+        example: 'https://stl.stage.services.mastercard.com'
+    xSrcFlowIdHeader:
+      in: header
+      name: X-Src-Cx-Flow-Id
+      description: >-
+        The X-Src-Cx-Flow-ID header maintains session affinity across consecutive API calls. 
+        Mastercard Checkout returns this value in the response header, and the same value must be sent in the subsequent call. 
+        Using a different value can cause replication errors across sites..
+      required: false
+      schema:
+        type: string
+      example: "a6b7a964-41ff-4d6c-8cba-26c6d5a7926f"
+
+  headers:
+    X-Src-Cx-Flow-Id-Header:
+      description: The X-Src-Cx-Flow-Id ensures that back-to-back API calls will be sent to the same Mastercard server to
+        maintain session affinity. When you make your initial API call, Click to Pay B2B responds with the
+        X-Src-Cx-Flow-Id in the header. The X-Src-Cx-Flow-Id returned in this response should be used in the
+        next back-to-back call to ensure these calls are directed to the same server. If the same
+        X-Src-Cx-Flow-Id is not used for back-to-back calls, you may encounter site replication errors.
+      required: true
+      schema:
+        type: string
+      example: "a6b7a964-41ff-4d6c-8cba-26c6d5a7926f"
+
+  responses:
+    BadRequest:
+      description: |
+        Bad Request if the required fields of the request are not present.
+      headers:
+        X-Src-Cx-Flow-Id:
+          description: Correlation ID for this transaction. Used to ensure routing to same site for subsequent calls.
+          schema:
+            type: string
+          example:
+            "2fea0a89-8ebe-40dd-a37e-f58cc1ddb236"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            BadRequestExample:
+              value:
+                status: 400
+                reason: INVALID_ARGUMENT
+                message: 'invalid request data'
+    Unauthorized:
+      description: |
+        Unauthorized.
+        See error object for details, for example, JWT token validation failure.
+      headers:
+        X-Src-Cx-Flow-Id:
+          description: Correlation ID for this transaction.
+          schema:
+            type: string
+          example:
+            "3fea0a89-8ebe-40dd-a37e-f58cc1ddb236"
+        WWW-Authenticate:
+          description: Session ID for authentication.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            UnauthorizedExample:
+              value:
+                status: 401
+                reason: UNAUTHENTICATED
+                message: 'unauthenticated'
+
+    Forbidden:
+      description: >-
+        Forbidden. See the 'error' object for details, such as an unvalidated client identity or origin.
+      headers:
+        X-Src-Cx-Flow-Id:
+          description: Correlation ID for this transaction.
+          schema:
+            type: string
+          example:
+            "4fea0a89-8ebe-40dd-a37e-f58cc1ddb236"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            ForbiddenExample:
+              value:
+                status: 401
+                reason: PERMISSION_DENIED
+                message: 'forbidden access'
+
+    NotFound:
+      description: |
+        Not Found.
+        See error object for details, for example, ID not recognized
+      headers:
+        SRC-Correlation-Id:
+          description: Correlation ID for this transaction.
+          schema:
+            type: string
+          example:
+            "5fea0a89-8ebe-40dd-a37e-f58cc1ddb236"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            NotFoundExample:
+              value:
+                status: 404
+                reason: NOT_FOUND
+                message: 'resource not found'
+
+  schemas:
+
+    CustomerProfileInquiry:
+      type: object
+      required:
+        - srcClientId
+        - srcDpaId
+        - idTokens
+      properties:
+        srcClientId:
+          $ref: '#/components/schemas/srcClientId'
+        srcDpaId:
+          $ref: '#/components/schemas/srcDpaId'
+        srcCorrelationId:
+          $ref: '#/components/schemas/srcCorrelationId'
+        serviceId:
+          $ref: '#/components/schemas/serviceId'
+        srciTransactionId:
+          $ref: '#/components/schemas/srciTransactionId'
+        shouldReturnEncryptedCustomer:
+          type: boolean
+          default: false
+          example: false
+          description: By default, encrypted consumer data is not returned in the response. If required, set to true.
+        idTokens:
+          description: |
+            List of ID tokens that comply with Federated JWT standards. Integrators can provide one or more ID tokens received from one or more Click to Pay systems. These tokens are generated through consumer recognition using One-time password (OTP) and are submitted to Mastercard to retrieve the card list.
+          type: array
+          items:
+            type: string
+          example:
+            [
+              "eyJ0eXBlIjoiSldUIiwiYWxnIjoiUlMyNTYiLCJraWQiOiI4NTIxNDY4OCJ9.eyJzdWIiOiI1OTY3OGJmNS00ODcxLTQ5M2MtOWUwYi05MGE1NTZiMjIzZDAiLCJlbWFpbF92ZXJpZmllZCI6ImZhbHNlIiwiYW1yIjpbIlNNU19PVFAiXSwiaXNzIjoiaHR0cHM6XC9cL21hc3RlcnBhc3MudGVzdHN0b3JlLmNvbSIsInNyY19lbWFpbF9tYXNrIjoiYSoqKioqMkBtYWlsaW5hdG9yLmNvbSIsInBob25lX251bWJlcl92ZXJpZmllZCI6InRydWUiLCJzcmNfcGhvbmVfbnVtYmVyX21hc2siOiIxKCoqKikgKioqLSo4OTYiLCJhdWQiOlsiaHR0cHM6XC9cL21hc3RlcnBhc3MudGVzdHN0b3JlLmNvbSIsImh0dHBzOlwvXC9tYXN0ZXJjYXJkLmNvbSJdLCJhdXRoX3RpbWUiOjE1NTQ0MDcyOTgsInBob25lX251bWJlciI6IjM4MWFlZmU0NGZlMGY5NWY3MDdhODBjMDY1ZGI0MDFlZTVkOTk2N2M4NmJiNWY1MTY5NTk2YjBjOWY4MmQ1MzgiLCJleHAiOjE1NTQ0MDgxOTgsImlhdCI6MTU1NDQwNzI5OCwianRpIjoiYzc5ZmU5YzAtZmMzOS00MDQyLTg0MGMtMDAwNjY3MDA4YTkxIiwiZW1haWwiOiI1MmE4M2Q5NzY0NTA4YzdlNDcyZmUxN2I5ZmY0NjczNjQzZTlmODQ1ZDMzM2VhNjU2Njk1YmJhYjkyOTljNmEyIn0.O7i4IqkE3Mnim_vVvJUZuIiaVTr8ShnNOpwRGUN1unRpUFDddVxf_0CJyRNdpS60UAItYpeQliDjD03riEXQUtLOHDx2dgiOWrX2Y9PekdKo8z4xZGsKNrCkRxArhN9IvKwUVV-pxmHUimZkTf4S9xJubur8LhmV1xzr56nTpx4Y364NZVSTi9QV0N3Wla0xSJ-7EQIXGqoabfW9ckc5dTctT-Ebbieb7YYB4awRHMDR1hyWj95fxTzpXzIVsJKySI7saZVB4AhU6yDC5-ba0dZnBKV33d1E0IS5QWzM49IDYjc4pSJHeYKD4p1kfr6co2c-zWLp63sZUDw4iQByTA"
+            ]
+        dpaTransactionOptions:
+          $ref: '#/components/schemas/DpaTransactionOptions'
+        dpaData:
+          $ref: '#/components/schemas/DpaData'
+    CustomerProfileResult:
+      type: object
+      properties:
+        srcCorrelationId:
+          $ref: '#/components/schemas/srcCorrelationId'
+        profiles:
+          type: array
+          description: "Profiles associated with each authenticated user. Returned only when one or more Click to Pay profiles are found."
+          items:
+            $ref: '#/components/schemas/CustomerProfile'
+
+    IdentityVerification:
+      type: object
+      required:
+        - srcClientId
+        - srcCorrelationId
+        - idLookupSessionId
+      properties:
+        srcClientId:
+          $ref: '#/components/schemas/srcClientId'
+        srcCorrelationId:
+          $ref: '#/components/schemas/srcCorrelationId'
+        serviceId:
+          $ref: '#/components/schemas/serviceId'
+        consumerIdentity:
+          $ref: '#/components/schemas/ConsumerIdentity'
+        idLookupSessionId:
+          type: string
+          description: Session ID provided in the Identity Lookup API response. This field is required.
+          example: "eyJraWQiOiIyMDIzMDIwODA4NTE1Ny1zYW5kYm94LWlkZW50aXR5LXZlcmlmaWNhdGlvbi1zcmMtbWFzdGVyY2FyZC1pbnQiLCJ0eXAiOiJKV1QrZXh0LnNlc3Npb25pZF90b2tlbiIsImFsZyI6IlJTMjU2In0.eyJhdWQiOiJodHRwczpcL1wvbWFzdGVyY2FyZC5jb20iLCJjb25zdW1lcklkIjoiY2ZiOWNlNDctZGQzOC00Y2QwLWIzMzktZTc0ODE3ODk0Y2VmIiwiaXNzIjoiaHR0cHM6XC9cL21hc3RlcmNhcmQuY29tIiwic2NvcGVEYXRhIjoie1wiaWRlbnRpdHlUeXBlXCI6XCJTTVNcIixcImlkZW50aXR5VmFsdWVcIjpcInBSampwc2ExWGV0SGdcL1FyQUNjV25EcFdLSXBZMFV5YlBvU1VsS2dlbVk4PVwiLFwiUHJvZ3JhbUlkXCI6XCJTUkNcIn0iLCJleHAiOjE3NjA0Mzg2MjgsImlhdCI6MTc2MDQzNjgyOCwianRpIjoiMWIwMWY5NjEtOWJjOS00NmU1LWE0NTktYTUyZjE4ZmZiMTMyIn0.NG1JpjnHVz8VRymVXOTBANgCt461HiX4gF0S3jaxH0-F4V"
+        requestedValidationChannel:
+          $ref: '#/components/schemas/IdentityValidationChannel'
+
+    IdentityVerificationResult:
+      type: object
+      properties:
+        idValidationSessionId:
+          type: string
+          description: Session ID token used to execute the Validate One-time password (OTP) endpoint.
+          example: "7fea0a89-8ebe-40dd-a37e-f58cc1ddb236"
+        srcCorrelationId:
+          $ref: '#/components/schemas/srcCorrelationId'
+        maskedValidationChannel:
+          $ref: '#/components/schemas/IdentityValidationChannel'
+        validationMessage:
+          type: string
+          description: Message that provides locale-specific guidance to the customer about the identity validation process.
+          example: "Successful"
+        supportedValidationChannels:
+          description: List of supported validation channels along with channel type (SMS, EMAIL). This will be returned by the Click to Pay System to indicate the channels supported.
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentityValidationChannel'
+
+
+    IdentityValidation:
+      type: object
+      required:
+        - idValidationSessionId
+        - srcClientId
+        - srcCorrelationId
+        - validationData
+      properties:
+        srcClientId:
+          $ref: '#/components/schemas/srcClientId'
+        srcCorrelationId:
+          $ref: '#/components/schemas/srcCorrelationId'
+        serviceId:
+          $ref: '#/components/schemas/serviceId'
+        idValidationSessionId:
+          type: string
+          description: Session ID token provided in the verification initiate endpoint.
+          example: "7fea0a89-8ebe-40dd-a37e-f58cc1ddb236"
+        validationData:
+          type: string
+          maxLength: 255
+          description: One-time password (OTP) value that the user enters.
+          example: "12345"
+
+    IdentityValidationResult:
+      type: object
+      required:
+        - srcCorrelationId
+        - idToken
+      properties:
+        srcCorrelationId:
+          $ref: '#/components/schemas/srcCorrelationId'
+        idToken:
+          type: string
+          format: JWT
+          description: ID token created by the Mastercard system after successful consumer authentication.
+          example: "eyJ0eXBlIjoiSldUIiwiYWxnIjoiUlMyNTYiLCJraWQiOiI4NTIxNDY4OCJ9.eyJzdWIiOiI1OTY3OGJmNS00ODcxLTQ5M2MtOWUwYi05MGE1NTZiMjIzZDAiLCJlbWFpbF92ZXJpZmllZCI6ImZhbHNlIiwiYW1yIjpbIlNNU19PVFAiXSwiaXNzIjoiaHR0cHM6XC9cL21hc3RlcnBhc3MudGVzdHN0b3JlLmNvbSIsInNyY19lbWFpbF9tYXNrIjoiYSoqKioqMkBtYWlsaW5hdG9yLmNvbSIsInBob25lX251bWJlcl92ZXJpZmllZCI6InRydWUiLCJzcmNfcGhvbmVfbnVtYmVyX21hc2siOiIxKCoqKikgKioqLSo4OTYiLCJhdWQiOlsiaHR0cHM6XC9cL21hc3RlcnBhc3MudGVzdHN0b3JlLmNvbSIsImh0dHBzOlwvXC9tYXN0ZXJjYXJkLmNvbSJdLCJhdXRoX3RpbWUiOjE1NTQ0MDcyOTgsInBob25lX251bWJlciI6IjM4MWFlZmU0NGZlMGY5NWY3MDdhODBjMDY1ZGI0MDFlZTVkOTk2N2M4NmJiNWY1MTY5NTk2YjBjOWY4MmQ1MzgiLCJleHAiOjE1NTQ0MDgxOTgsImlhdCI6MTU1NDQwNzI5OCwianRpIjoiYzc5ZmU5YzAtZmMzOS00MDQyLTg0MGMtMDAwNjY3MDA4YTkxIiwiZW1haWwiOiI1MmE4M2Q5NzY0NTA4YzdlNDcyZmUxN2I5ZmY0NjczNjQzZTlmODQ1ZDMzM2VhNjU2Njk1YmJhYjkyOTljNmEyIn0.O7i4IqkE3Mnim_vVvJUZuIiaVTr8ShnNOpwRGUN1unRpUFDddVxf_0CJyRNdpS60UAItYpeQliDjD03riEXQUtLOHDx2dgiOWrX2Y9PekdKo8z4xZGsKNrCkRxArhN9IvKwUVV-pxmHUimZkTf4S9xJubur8LhmV1xzr56nTpx4Y364NZVSTi9QV0N3Wla0xSJ-7EQIXGqoabfW9ckc5dTctT-Ebbieb7YYB4awRHMDR1hyWj95fxTzpXzIVsJKySI7saZVB4AhU6yDC5-ba0dZnBKV33d1E0IS5QWzM49IDYjc4pSJHeYKD4p1kfr6co2c-zWLp63sZUDw4iQByTA"
+
+    IdentityLookup:
+      type: object
+      required:
+        - srcClientId
+        - srcCorrelationId
+        - consumerIdentity
+      properties:
+        srcClientId:
+          $ref: '#/components/schemas/srcClientId'
+        srcCorrelationId:
+          $ref: '#/components/schemas/srcCorrelationId'
+        serviceId:
+          $ref: '#/components/schemas/serviceId'
+        consumerIdentity:
+          $ref: '#/components/schemas/ConsumerIdentity'
+
+    IdentityLookupResult:
+      type: object
+      required:
+        - consumerPresent1
+      properties:
+        consumerPresent1:
+          type: boolean
+          description: This indicates if the consumer is present in the Mastercard system.
+          example: true
+        srcCorrelationId:
+          $ref: '#/components/schemas/srcCorrelationId'
+        idLookupSessionId:
+          type: string
+          description: Session identifier of format UUID, returned by Mastercard checkout solutions (MCS) following an Identity Lookup operation. Can be used in a subsequent Initiate Identity Validation operation.
+          example: "eyJraWQiOiIyMDIzMDIwODA4NTE1Ny1zYW5kYm94LWlkZW50aXR5LXZlcmlmaWNhdGlvbi1zcmMtbWFzdGVyY2"
+        consumerStatus:
+          type: string
+          description: Current status of the Consumer. Subsequent calls cannot be made if the profile is either SUSPENDED or LOCKED.
+          example: ACTIVE
+          enum:
+            - ACTIVE
+            - SUSPENDED
+            - LOCKED
+        supportedValidationChannels:
+          type: array
+          description: List of supported validation channels along with channel type (SMS, EMAIL). Mastercard returns this list to indicate the channels supported.
+          items:
+            $ref: '#/components/schemas/IdentityValidationChannel'
+        lastUsedCardTimestamp:
+          type: string
+          description: |
+            A timestamp for when the last card associated with the consumer was used. This timestamp is returned as a string representing a UTC time in Unix epoch format.
+          example: "1716153600"
+
+    IdentityValidationChannel:
+      type: object
+      properties:
+        validationChannelId:
+          type: string
+          description: ID for the validation channel.
+          example: "2345634"
+        identityProvider:
+          $ref: '#/components/schemas/IdentityProvider'
+        identityType:
+          $ref: '#/components/schemas/IdentityType'
+        maskedValidationChannel:
+          type: string
+          maxLength: 255
+          description: Masked value of the channel used to deliver the Validation code (like OTP). It can be either a masked email address or phone number.
+          example: "+1(***) ***-*661"
+
+
+    DigitalCardFeature:
+      type: object
+      description: Set of digital card attributes related to digital card features that should be displayed to the consumer.
+      required:
+        - content
+        - contentType
+      properties:
+        content:
+          type: string
+          description: Content of the Digital Card Feature. The value is specific for the contentType.
+          example: "content"
+        contentType:
+          $ref: '#/components/schemas/DigitalCardFeatureContentType'
+        style:
+          type: string
+          description: URI of a CSS style sheet that describes how to present a Digital Card Feature.
+          example: "https://uri/style"
+        width:
+          type: string
+          format: numeric
+          description: Width to be applied to display of a Digital Card Feature image.
+          example: "300"
+        height:
+          type: string
+          format: numeric
+          description: Height to be applied to display of a Digital Card Feature image.
+          example: "500"
+
+    DigitalCardFeatureContentType:
+      type: string
+      nullable: true
+      enum:
+        - TEXT_STRING
+        - IMAGE_URL
+        - CONTENT_URL
+        - LINK_URL
+      description: "Type of the content of the Digital Card Feature."
+      example: "TEXT_STRING"
+    CardPendingEvent:
+      type: string
+      description: "List of events that are pending completion."
+      example: "PENDING_SCA"
+      nullable: true
+      enum:
+        - PENDING_SCA
+        - PENDING_PROVISION
+        - PENDING_ACTIVATION
+
+    KeyValueData:
+      type: object
+      description: A container for representing data as key-value pairs.
+      required:
+        - key
+      properties:
+        key:
+          type: string
+          description: "A unique identifier or name for a data element within the key-value pair."
+          example: "key"
+        value:
+          type: string
+          description: "The data associated with a given key."
+          example: "string"
+
+    MaskedCard:
+      type: object
+      required:
+        - panLastFour
+        - dateOfCardCreated
+      properties:
+        srcDigitalCardId:
+          type: string
+          maxLength: 36
+          description: |
+            Max Length=36. Unique Identifier of the card. A reference representing the PAN or Payment Token that enables a non-SRCPI entity to identify the underlying PAN. A single PAN can have one or more SRC Digital Card Reference Identifiers. Digital Card information can be accompanied with SRC Digital Card Reference Identifier. It is associated with the SRC Profile to which the Digital Card belongs and is unique within an Click to Pay System.
+            Conditionality: Supplied when returned to SRCI or DCF; not required when returned to an SRC-PI.
+          example: "8e640289-10bb-43d6-a9bb-d018bed8b3ee"
+        srcPaymentCardId:
+          type: string
+          maxLength: 36
+          description: |
+            Max Length = 36. A reference representing the PAN that enables the Click to Pay System to communicate with the SRCPI without transmitting the actual PAN. It is associated with the SRC Profile to which the Payment Card belongs and is unique within an Click to Pay System.
+            Conditionality: Supplied when returned to the SRC-PI.
+          example: "12345"
+        cofEligible:
+          type: boolean
+          description: Indicates whether the card is eligible for card-on-file tokenization.
+          example: true
+        panBin:
+          type: string
+          example: "545503"
+          description: Maximum length is the Primary Account Number (PAN) length minus 10. First significant digits of the PAN in unmasked form.
+        panLastFour:
+          type: string
+          maxLength: 4
+          description: Length = 4. Attribute of the Payment Card that represents the Last 4 digits of the PAN included in an unmasked form.
+          example: "0220"
+        tokenBin:
+          type: string
+          example: "111"
+          description: |
+            Maximum length is the payment token length minus 10. A specific bank identification number (BIN) range, or subset of a BIN range, designated only to issue payment tokens. Included in unmasked form.
+            Required when a token is used.
+        tokenLastFour:
+          type: string
+          maxLength: 4
+          example: "3287"
+          description: Last 4 digits of the payment token in unmasked form. Required when a token is used.
+        tokenInfo:
+          type: array
+          description: The token information.
+          items:
+            $ref: '#/components/schemas/TokenInfoType'
+          example: [
+            {
+              "key": "",
+              "value": ""
+            }
+          ]
+        digitalCardData:
+          $ref: '#/components/schemas/DigitalCardData'
+        digitalCardFeatures:
+          type: array
+          description: features of digital card
+          items:
+            $ref: '#/components/schemas/DigitalCardFeature'
+        panExpirationMonth:
+          type: string
+          maxLength: 2
+          description: |
+            Length = 2. Expiration month of the Payment Card, expressed as a Calendar Month used for presentation purposes.
+            Conditionality: Supplied when specified for the card (PAN).
+          example: "10"
+        panExpirationYear:
+          type: string
+          maxLength: 4
+          description: |
+            Length = 4. Expiration year of the Payment Card expressed as four-digit year, used for presentation purposes.
+            Conditionality: Supplied when specified for the card (PAN).
+          example: "22"
+        digitalCardRelatedData:
+          type: array
+          description: This can be used to pass custom information about the card.
+          items:
+            $ref: '#/components/schemas/KeyValueData'
+          example: [
+            {
+              "key": "",
+              "value": ""
+            }
+          ]
+        countryCode:
+          type: string
+          description: ISO 3166-1 alpha-2 country code. Country code of issuance associated with the Card Issuer's BIN license.
+          example: "US"
+        billingAddress:
+          $ref: '#/components/schemas/MaskedBillingAddress'
+        dcf:
+          $ref: '#/components/schemas/DCF'
+        digitalCardStatus:
+          type: string
+          example: "ACTIVE"
+          description: Status of the digital card.
+        dateOfCardCreated:
+          type: string
+          example: "1678886400"
+          description: Date the card was created.
+        dateOfCardLastUsed:
+          type: string
+          example: "1678886400"
+          description: Date the card was last used.
+        paymentCardDescriptor:
+          type: string
+          maxLength: 32
+          example: "Mastercard"
+          description: Max Length = 32. Conveys the card brand, and will be a free-form string, to be defined within a program.
+        paymentCardType:
+          type: string
+          example: "CREDIT"
+          description: Max Length of 32. Conveys the card type. Enum values (CREDIT,DEBIT,PREPAID,COMBO,FLEX). COMBO and FLEX are for applicable regions only.
+        guestIssuer:
+          type: boolean
+          example: true
+          description: Indicates whether the issuer is a guest issuer.
+
+    TokenInfoType:
+      type: object
+      properties:
+        tokenType:
+          type: string
+          description: The token type.
+          example: dynamic
+        tokenPrefix:
+          type: string
+          description: The token prefix.
+          example: "pre"
+        tokenSuffix:
+          type: string
+          description: The token suffix.
+          example: "suff"
+        tokenUniqueReference:
+          type: string
+          example: "12345"
+          description: Unique reference for the token.
+
+    DigitalCardData:
+      type: object
+      description: |
+        Digital Card Data contains digital card information that is used in the acceptance environment and in the user interface. Its purpose is to provide reference to the actual PAN or Payment Token without actually disclosing either. Digital Card Data is grouped based on the following:
+        Digital Card Information: data used in Request and Response Messages.
+        UI/UX Presentation Data: data used in user interfaces to provide the user with a recognizable descriptor.
+        Digital Card Art: image that accompanies Digital Card information for user interface purposes.
+      properties:
+        status:
+          type: string
+          example: "active"
+          description: |
+            Status of the Card in the Click to Pay System. Values:
+            ACTIVE: The card is active and can be used for checkout.
+            SUSPENDED: The card is inactive/locked and cannot be used for checkout.
+            EXPIRED: The card cannot be used for checkout as its expiration date has passed.
+            PENDING: The card entered is pending additional authorization/completion, such as: PENDING_AVS, PENDING_SCA, PENDING_CONSUMER_IDV.
+        presentationName:
+          type: string
+          example: "Citi Bank"
+          description: Name that can be used for display. Presentation text created by the Consumer to enable recognition of the PAN entered into the DCF. This value is unique to the DCF and defined by the Consumer (e.g., Nickname).
+        descriptorName:
+          type: string
+          example: "mastercard"
+          description: Presentation text defined by the SRC Program that describes the PAN presented as a Digital Card. This descriptor is the same across all DCFs.
+        artUri:
+          type: string
+          example: "https://stage.assets.mastercard.com/card-art/combined-image-asset/MyBank-mastercard.png"
+          description: Full HTTPS URL for the card art. The value can be card-specific or issuer-specific, for example, https://dcf.sbx.src-stub.masterpass.com/static/img/card.0ae19b4.svg.
+        artHeight:
+          type: string
+          format: numeric
+          example: "50"
+          description: Height of the card art image in pixels.
+        artWidth:
+          type: string
+          format: numeric
+          example: "50"
+          description: Width of the card art image in pixels.
+        pendingEvents:
+          type: array
+          description: Set of events that are pending completion.
+          items:
+            $ref: '#/components/schemas/CardPendingEvent'
+        authenticationMethods:
+          type: array
+          description: List of methods used to authenticate the consumer.
+          items:
+            $ref: "#/components/schemas/AuthenticationMethod"
+        coBrandedName:
+          type: string
+          example: "brand name"
+          description: The co-branded name.
+        isCoBranded:
+          type: boolean
+          example: true
+          description: Indicates card is co-branded.
+
+    DpaData:
+      type: object
+      description: May be provided, as required, to dynamically update previously registered DPA data. For example, presentation name.
+      required:
+        - dpaName
+      properties:
+        dpaPresentationName:
+          type: string
+          description: Display name of the DPA website.
+          example: "name"
+        dpaAddress:
+          $ref: '#/components/schemas/Address'
+        dpaName:
+          type: string
+          description: The DPA name.
+          example: "name"
+        dpaEmailAddress:
+          type: string
+          description: The DPA's email address.
+          example: "email@email.com"
+        dpaPhoneNumber:
+          $ref: '#/components/schemas/PhoneNumber'
+        dpaLogoUri:
+          type: string
+          description: The DPA logo URL.
+          example: "https;//url/logo"
+        dpaSupportEmailAddress:
+          type: string
+          description: The DPA's supporting email address.
+          example: "email@email.com"
+        dpaSupportPhoneNumber:
+          $ref: '#/components/schemas/PhoneNumber'
+        dpaSupportUri:
+          type: string
+          description: Supporting URL of the DPA.
+          example: "https;//url/support"
+        dpaUri:
+          type: string
+          description: The DPA URI.
+          example: "https://uri/dpa"
+        applicationType:
+          type: string
+          enum:
+            - IOT_DEVICE
+            - MOBILE_APP
+            - WEB_BROWSER
+            - OTHER
+          description: The type of application.
+          example: "WEB_BROWSER"
+        merchantAccountInformation:
+          type: string
+          example: "acceptance account for xyz llc"
+          description: Implementation specific account information for an alternative acceptance channel.
+        merchantCountryCode:
+          type: string
+          example: "US"
+          description: |
+            The country code associated with the site or application that implements SRC.
+            Required when used with the DPA Registration operation in the Management Service APIs.
+        businessId:
+          $ref: '#/components/schemas/BusinessIdentification'
+        merchantName:
+          type: string
+          example: "xyz goods llc"
+          description: Merchant name assigned by the acquirer or payment system for 3DS use only, which may differ from DpaData.dpaName.
+        merchantCategoryCode:
+          type: string
+          example: "06"
+          description: Category code associated with the merchant.
+        acquirerId:
+          type: string
+          example: "5678"
+          description: The ID of the acquirer
+        acquirerBin:
+          type: string
+          example: "444444"
+          description: BIN range for the acquirer
+        dpaPanDataRequested:
+          type: boolean
+          description: Indicates whether a PAN is requested.
+          example: true
+
+    BusinessIdentification:
+      type: object
+      properties:
+        businessIdentificationType:
+          type: string
+          description: Required when DpaData.acquirerMerchantId is not present or when BusinessIdentification.businessIdentificationValue is present.
+          example: "ein"
+        businessIdentificationValue:
+          type: string
+          description: Required when DpaData.acquirerMerchantId is not present or when BusinessIdentification.businessIdentificationType is present.
+          example: "123776"
+        acquirerMerchantId:
+          type: string
+          description: Merchant identifier assigned by the acquirer.
+          example: "56789"
+
+    PhoneNumber:
+      type: object
+      required:
+        - countryCode
+        - phoneNumber
+      properties:
+        countryCode:
+          type: string
+          pattern: ^[0-9]+$
+          minLength: 1
+          maxLength: 4
+          description: Length = 1 to 4 digits. Phone number country code. International calling code format.
+          example: 1
+        phoneNumber:
+          type: string
+          pattern: ^[0-9]+$
+          minLength: 4
+          maxLength: 14
+          description: Length = 4 to 14 digits. Phone number without country code.
+          example: 7324566789
+
+    DpaTransactionOptions:
+      type: object
+      description: DPA-specific preferences and transaction configuration parameters.
+      properties:
+        transactionAmount:
+          $ref: '#/components/schemas/TransactionAmount'
+        transactionType:
+          $ref: '#/components/schemas/TransactionType'
+        dpaBillingPreference:
+          $ref: '#/components/schemas/AddressPreference'
+        dpaAcceptedBillingCountries:
+          type: array
+          description: ISO 3166 alpha-2 country code. Consumer-provided country code.
+          example: ["exmaple1", "example2"]
+          items:
+            type: string
+        dpaShippingPreference:
+          $ref: '#/components/schemas/AddressPreference'
+        dpaAcceptedShippingCountries:
+          type: array
+          example: ["exmaple1", "example2"]
+          description: Shipping restrictions. Array of country codes in ISO 3166-1 alpha-2 format - Shipping region country codes that limits the selection of eligible shipping addresses. If this list is empty, then it means all countries are accepted.
+          items:
+            type: string
+        deliveryMethod:
+          $ref: '#/components/schemas/DeliveryMethod'
+        consumerEmailAddressRequested:
+          type: boolean
+          example: true
+          description: Consumer email address requested.
+        consumerNameRequested:
+          type: boolean
+          example: true
+          description: Consumer name requested.
+        consumerPhoneNumberRequested:
+          type: boolean
+          example: true
+          description: Consumer phone number requested.
+        cardholderNameRequested:
+          type: boolean
+          example: true
+          description: Cardholder name requested.
+        consumerNationalIdentifierRequested:
+          type: boolean
+          example: true
+          description: "Indicates if a consumer national identifier is requested."
+        merchantCategoryCode:
+          type: string
+          example: "4444"
+          description: Code representing merchant’s type of business, product or service.
+        merchantCountryCode:
+          type: string
+          example: "US"
+          description: ISO-3166 country code of the merchant.
+        merchantOrderId:
+          type: string
+          format: UUID
+          example: "eccbf087-f159-4d69-b31d-00bec75c0474"
+          description: Merchant order ID.
+        threeDsPreference:
+          $ref: "#/components/schemas/ThreeDsPreference"
+        threeDsInputData:
+          $ref: "#/components/schemas/JSONObject"
+        srcTokenRequestData:
+          $ref: "#/components/schemas/JSONObject"
+        paymentOptions:
+          type: array
+          description: "A set of options related to the dynamic data that will be used for this payment."
+          items:
+            $ref: '#/components/schemas/PaymentOptions'
+        dpaCustomAttributes:
+          type: array
+          description: Custom attributes for the Digital Payment Application (DPA).
+          items:
+            $ref: '#/components/schemas/KeyValueData'
+        dpaLocale:
+          type: string
+          example: "en_US"
+          description: "ISO language country pair. [ISO 639-1 Code][ISO 3166-1alpha-2 countrycode]"
+        customInputData:
+          $ref: "#/components/schemas/JSONObject"
+        orderType:
+          type: string
+          example: "online"
+          description: Type of the order.
+        confirmPayment:
+          type: boolean
+          example: true
+          description: Indicates whether DCF prompts the consumer to confirm the payment when the value is set to true.
+        authenticationPreferences:
+          $ref: '#/components/schemas/AuthenticationPreferences'
+        checkoutResponseDataLevel:
+          type: array
+          description: Checkout response data level.
+          items:
+            $ref: '#/components/schemas/KeyValueData'
+        payloadResponseDataLevel:
+          type: array
+          description: Payload response data level.
+          items:
+            $ref: '#/components/schemas/KeyValueData'
+        payloadTypeIndicator:
+          $ref: '#/components/schemas/PayloadTypeIndicator'
+        acquirerMerchantId:
+          type: string
+          description: Merchant identifier assigned by the acquirer.
+          example: "12345"
+        acquirerBIN:
+          type: string
+          description: "BIN range for the acquirer"
+          example: "1111"
+        merchantName:
+          type: string
+          description: Merchant name assigned by the Acquirer or Payment System
+          example: "XYZ Inc"
+        
+
+    TransactionType:
+      type: string
+      enum:
+        - PURCHASE
+        - BILL_PAYMENT
+        - MONEY_TRANSFER
+        - DISBURSEMENT
+        - P2P
+    DeliveryMethod:
+      type: string
+      enum:
+        - NO_DELIVERY
+        - ADDRESS_BILLING
+        - ADDRESS_ON_FILE
+        - ADDRESS_OTHER
+        - PICKUP
+        - ELECTRONIC
+
+    AddressPreference:
+      type: string
+      enum:
+        - NONE
+        - FULL
+        - POSTAL_COUNTRY
+
+    ThreeDsPreference:
+      type: string
+      enum:
+        - NONE
+        - SELF
+        - ONBEHALF
+
+    AuthenticationPreferences:
+      type: object
+      properties:
+        authenticationMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthenticationMethod'
+        suppressChallenge:
+          type: boolean
+          example: true
+          description: "Indicates if the integrator wants to suppress the challenge."
+        payloadRequested:
+          $ref: '#/components/schemas/PayloadRequested'
+    PayloadRequested:
+      type: string
+      enum:
+        - AUTHENTICATED
+        - NON_AUTHENTICATED
+      description: Indicates whether the SRCI or Merchant prefers an authenticated or non-authenticated payload.
+
+    DynamicDataType:
+      type: string
+      description: Type of cryptogram or token used for the card data.
+      nullable: true
+      enum:
+        - CARD_APPLICATION_CRYPTOGRAM
+        - CARDHOLDER_AUTHENTICATION_CRYPTOGRAM
+        - CARD_SECURITY_CODE
+        - CARD_APPLICATION_CRYPTOGRAM_SHORT_FORM
+        - CARD_APPLICATION_CRYPTOGRAM_LONG_FORM
+        - DYNAMIC_CARD_SECURITY_CODE
+        - NONE
+
+    PaymentOptions:
+      type: object
+      properties:
+        dpaDynamicDataTtlMinutes:
+          type: string
+          format: numeric
+          example: "300"
+          description: DPA dynamic data. Mastercard does not currently support this value.
+        dynamicDataType:
+          $ref: '#/components/schemas/DynamicDataType'
+
+    PayloadTypeIndicator:
+      type: string
+      description: Payload type indicator. Mastercard does not currently support this value.
+      nullable: true
+      enum:
+        - SUMMARY
+        - FULL
+        - PAYMENT
+        - NON_PAYMENT
+
+    TransactionAmount:
+      type: object
+      description: Transaction amount given in the format corresponding to the ISO 4217 currency code specified by transactionCurrencyCode.
+      required:
+        - transactionAmount
+      properties:
+        transactionAmount:
+          type: number
+          format: float
+          example: 10.0
+          description: The transaction amount.
+        transactionCurrencyCode:
+          type: string
+          example: "USD"
+          description: The transaction currency code.
+
+    MaskedConsumer:
+      type: object
+      description: Authenticated user
+      required:
+        - srcConsumerId
+        - dateConsumerAdded
+      properties:
+        srcConsumerId:
+          type: string
+          example: "7dc8ccfe-5838-445b-9944-24fbeb222838"
+          description: SRC Consumer Reference Identifier as generated by the Click to Pay System.
+        maskedConsumerIdentity:
+          $ref: '#/components/schemas/MaskedConsumerIdentity'
+        maskedEmailAddress:
+          type: string
+          maxLength: 255
+          example: "t*****0@mailinator.com"
+          description: Max Length = 255. Masked Consumer email address.
+        maskedConsumerMobileNumber:
+          $ref: '#/components/schemas/MaskedPhoneNumber'
+        maskedNationalIdentifier:
+          type: string
+          maxLength: 20
+          example: "5********"
+          description: Max Length = 20 Masked Consumer national identifier.
+        complianceSettings:
+          $ref: '#/components/schemas/ComplianceSettings'
+        countryCode:
+          type: string
+          example: "US"
+          description: ISO 3166 alpha-2 country code. Consumer-provided country code.
+        languageCode:
+          type: string
+          example: "en"
+          description: ISO 639-1 Code. Consumer provided language choice.
+        status:
+          type: string
+          example: "ACTIVE"
+          description:  |
+            Signifies the state of the consumer at any given time at the Click to Pay System.
+              Values: ACTIVE, SUSPENDED,LOCKED
+        maskedFirstName:
+          type: string
+          example: "t***"
+          description: Max Length = 30. Masked first name of the consumer.
+        maskedLastName:
+          type: string
+          example: "t***"
+          description: Max Length = 30. Masked last name of the consumer.
+        dateConsumerAdded:
+          type: string
+          example: "2019-05-09T18:50:49.432Z"
+          description: UTC timestamp when consumer was added to the Click to Pay System.
+
+    MaskedPhoneNumber:
+      type: object
+      description: Masked Consumer mobile phone number.
+      required:
+        - countryCode
+        - phoneNumber
+      properties:
+        countryCode:
+          type: string
+          minLength: 1
+          maxLength: 4
+          example: "1"
+          description: Length = 1 to 4 digits. Phone number country code. International calling code format.
+        phoneNumber:
+          type: string
+          minLength: 4
+          maxLength: 14
+          example: "(***) ***-*946"
+          description: Length = 4 to 14 digits. Phone number without country code.
+
+
+
+    IdentityProvider:
+      type: string
+      description: Entity or organization that collected and verified the Consumer Identity.
+      nullable: true
+      enum:
+        - SRC
+
+    IdentityType:
+      type: string
+      description: >
+        Specifies the type of consumer identity transmitted or collected. Allowed values are EMAIL_ADDRESS or MOBILE_PHONE_NUMBER.
+                    A MOBILE_PHONE_NUMBER must include the country code followed by the phone number. Digits only (no spaces, hyphens, or special characters).
+                    Do not include the plus (+) symbol.
+      nullable: true
+      example: MOBILE_PHONE_NUMBER
+      enum:
+        - EMAIL_ADDRESS
+        - MOBILE_PHONE_NUMBER
+
+    ConsumerIdentity:
+      type: object
+      description: >
+        Primary verifiable consumer identifier within a Click to Pay Profile. It can be email address or mobile phone number.
+        Required if idLookupSessionId is not provided.
+      required:
+        - identityType
+        - identityValue
+      properties:
+        identityProvider:
+          $ref: '#/components/schemas/IdentityProvider'
+        identityType:
+          $ref: '#/components/schemas/IdentityType'
+        identityValue:
+          type: string
+          example: "18686468661"
+          description: Consumer Identity value that corresponds to the Consumer Identity Type. Is used to locate information within the Click to Pay Profile.
+
+    MaskedConsumerIdentity:
+      type: object
+      required:
+        - identityType
+        - maskedIdentityValue
+      properties:
+        identityProvider:
+          $ref: '#/components/schemas/IdentityProvider'
+        identityType:
+          $ref: '#/components/schemas/IdentityType'
+        maskedIdentityValue:
+          type: string
+          example: "123456"
+          maxLength: 255
+          description: Max Length = 255. Masked consumer identifier value, e.g., masked email address or masked mobile phone number as per masking rules.
+
+    ComplianceSettings:
+      type: object
+      description: Consumer compliance settings.
+      properties:
+        complianceResources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceResource"
+
+    ComplianceResource:
+      type: object
+      description: "A set of compliance resource objects for indicating the consumer’s consent."
+      properties:
+        complianceType:
+          type: string
+          example: REMEMBER_ME
+          description: |
+            An enumeration with various possible values. Some suggested values are
+            PRIVACY_POLICY, REMEMBER_ME,TERMS_AND_CONDITIONS, COOKIE GEOLOCATION
+        uri:
+          type: string
+          example: "https://www.mastercard.com/global/click-to-pay/country-listing/terms.html"
+          description: "Max Length = 1024. Represents the URI where the consumer consent is captured."
+        version:
+          type: string
+          example: "1.0"
+          description: "Max Length = 10. Version details of the device/browser that captured the consent."
+        datePublished:
+          type: string
+          example: "1679318465"
+          description: "UTC time in Unix epoch format. Represents when the resource was published."
+
+    CustomerProfile:
+      type: object
+      properties:
+        immutable:
+          type: boolean
+          description: Indicates whether the profile can be updated.
+          default: false
+          example: true
+        preferredProfile:
+          type: boolean
+          default: false
+          example: true
+          description: |
+            In the consumer profile list, a preferred profile indicator value of TRUE indicates that the profile is preferred among the available profiles.
+            Except for the preferred profile, all other profiles have a preferred profile indicator value of FALSE.
+        programUserInterfaceOptions:
+          $ref: '#/components/schemas/ProgramUserInterfaceOptions'
+        dfCustomAttributes:
+          type: array
+          description: "Container for Mastercard-related properties set by the prepare/profiles call during a DCF-based checkout."
+          items:
+            $ref: '#/components/schemas/KeyValueData'
+        encryptedConsumer:
+          type: string
+          example: "6fd50a1eb4f662f3a2f705f6b98a37b46fd50a1eb4f662f3a2f705f6b98a37b46fd50a1eb4f662f3a2f705f6b98a37b4"
+          description: >
+            Encrypted details for email, name and phone number (if available):
+                  {
+                      emailAddress: string
+                      mobileNumber: PhoneNumber
+                      firstName: string
+                      lastName: string
+                  }
+        maskedConsumer:
+          $ref: '#/components/schemas/MaskedConsumer'
+        maskedCards:
+          type: array
+          description: Card list of authenticated users.
+          items:
+            $ref: '#/components/schemas/MaskedCard'
+        maskedShippingAddresses:
+          type: array
+          description: List of known shipping addresses.
+          items:
+            $ref: '#/components/schemas/MaskedShippingAddress'
+        authorization:
+          description: Mastercard generated authorization token for the provided consumer identity
+          type: array
+          items:
+            type: string
+          example: [
+            "eyJraWQiOiJLZXkxIiwidHlwIjoiSldUdGVzdE1jSWRUb2tlbiIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJmNGYyN2IyZi1kODdiLTRkZTEtOWZiNS02MTg0NDMzZTNjYjYiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYW1yIjoiRU1BSUxfT1RQIiwiaXNzIjoiaHR0cHM6XC9cL21hc3RlcmNhcmQuY29tIiwic3JjX2VtYWlsX21hc2siOiJzKioqKiowQG1haWxpbmF0b3IuY29tIiwicGhvbmVfbnVtYmVyX3ZlcmlmaWVkIjpmYWxzZSwic3JjX3Bob25lX251bWJlcl9tYXNrIjoiKCoqKikgKioqLSo5NDYiLCJhdWQiOiJodHRwczpcL1wvbWFzdGVyY2FyZC5jb20iLCJhdXRoX3RpbWUiOjE1NTgwMjUsInBob25lX251bWJlciI6IjRlMXJBVXlWbFArNXFLcTBrOU1QazJGd0U2V0txT2xJSFFWOGxLVkNMbFE9IiwiZXhwIjoxNTU4MDI2OTk5LCJpYXQiOjE1NTgwMjYwOTksImp0aSI6InRlbXByYXJ5SWQiLCJlbWFpbCI6Ikt3bkxoUkpHQ0JJbldZaUNyWG8waEJJOGRqbjdMckMxT1BYRGVUT1lhdDQ9In0.CVh7ZqMQwgSB_SW7sbSdaORqGfip8Ifo_D_zjdAWBOczfwswzF7ega8Y4gCYXu7kB-Uef3nk_-yaPR6pqPbyIcUD_lRNPd38WXl2bt9WH_Aiy9kcqKeUy6XT53x2MHZDyMV65eNnBi6Di_ZBt5wI4zW7fIz5dOf4AY5Bpdqn5nqIdYnkOCBF9rTotW9btxyrT3atEjxRjJwS8ffe3B7YzEC3bURLr9sxgdWAYknRM9ttMNAEx2giVjJByjLGlgiTu7pItJQwERLokHYXujdC67Q4rspDUnfDCinM_KICyvLuZexbxF9LCLwtHPS3-zQJvu5WMCXsjha49kHaNH-uxw"
+          ]
+
+    ProgramUserInterfaceOptions:
+      type: object
+      description: Used by Mastercard to provide program specific customized user interface options during DCF-based checkout.
+      properties:
+        programId:
+          type: string
+          example: "SRC"
+          description: the program id
+        profileUpdateAllowed:
+          description: Indicates that the directory owner approved Click to Pay to update the profile.
+          type: boolean
+          example: true
+        profileUpdateConsentRequired:
+          description: Indicates whether consent is required before updating the profile.
+          type: boolean
+          example: true
+        profileTncManagedBySRC:
+          description: Check if T&C are managed by C2P 
+          type: boolean
+          example: true
+
+    MaskedShippingAddress:
+      type: object
+      properties:
+        shippingAddressId:
+          type: string
+          example: "e43094ee-93fb-4069-85b2-a3f24508acdd"
+          description: the shipping address id
+        name:
+          type: string
+          example: ""
+          maxLength: 60
+          description: Max Length = 60. Name of the individual getting billed for the delivered goods or service
+        line1:
+          type: string
+          maxLength: 75
+          example: "1** M*** s*"
+          description:  Max Length = 75. Address line 1.
+        line2:
+          type: string
+          maxLength: 75
+          example: "N*"
+          description: Max Length = 75. Address line 2.
+        line3:
+          type: string
+          maxLength: 75
+          example: "N*"
+          description:  Max Length = 75. Address line 3.
+        city:
+          type: string
+          example: "NY"
+          maxLength: 50
+          description: Max Length = 50. Address city.
+        state:
+          type: string
+          example: "NY"
+          maxLength: 30
+          description:  Max Length = 30. Address state.
+        country:
+          type: string
+          example: "USA"
+          description: the country of the address
+        countryCode:
+          type: string
+          example: "US"
+          description: ISO 3166-1 alpha 2 country code. Address country code.
+        zip:
+          type: string
+          maxLength: 16
+          example: "10293"
+          description: Max Length = 16. Address zip or postal code.
+        createTime:
+          type: string
+          example: "1678886400"
+          description: the create time for the entity. UTC time in Unix epoch format
+        lastUsedTime:
+          type: string
+          example: "1678886400"
+          description: the last used time. UTC time in Unix epoch format
+
+
+    MaskedBillingAddress:
+      type: object
+      properties:
+        billingAddressId:
+          type: string
+          example: "c536e740-11fb-4020-bf9f-dc7f787efd3c"
+          description: the billing address identifier
+        name:
+          type: string
+          maxLength: 60
+          example: "J*** A****"
+          description: Max Length = 60. Name of the individual getting billed for the delivered goods or service
+        line1:
+          type: string
+          maxLength: 75
+          example: "1** M*** s*"
+          description:  Max Length = 75. Address line 1.
+        line2:
+          type: string
+          maxLength: 75
+          example: "N*"
+          description: Max Length = 75. Address line 2.
+        line3:
+          type: string
+          maxLength: 75
+          example: "N*"
+          description:  Max Length = 75. Address line 3.
+        city:
+          type: string
+          example: "NY"
+          maxLength: 50
+          description: Max Length = 50. Address city.
+        state:
+          type: string
+          example: "NY"
+          maxLength: 30
+          description:  Max Length = 30. Address state.
+        country:
+          type: string
+          example: "USA"
+          description: the country of the address
+        countryCode:
+          type: string
+          example: "US"
+          description: ISO 3166-1 alpha 2 country code. Address country code.
+        zip:
+          type: string
+          maxLength: 16
+          example: "10293"
+          description: Max Length = 16. Address zip or postal code.
+
+
+    DCF:
+      type: object
+      required:
+        - type
+        - uri
+      properties:
+        type:
+          type: string
+          example: "BROWSER"
+          description: Type of DCF.
+        uri:
+          type: string
+          example: "https://stage.src.mastercard.com/dcf/"
+          description: The URL address of the DCF.
+        logoUri:
+          type: string
+          example: "http://mastercard.com/"
+          description: URL of the DCF logo.
+        name:
+          type: string
+          example: "mastercard"
+          description: Name of the DCF.
+
+    Error:
+      type: object
+      required:
+        - status
+        - reason
+        - message
+      properties:
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+          example: 403
+        reason:
+          $ref: "#/components/schemas/ErrorReason"
+        message:
+          type: string
+          description: Error message details.
+          example: "failure message"
+        errordetail:
+          type: array
+          description: List of Errors.
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+
+    ErrorDetail:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          $ref: "#/components/schemas/ErrorDetailReason"
+        message:
+          type: string
+          description: Error message description.
+          example: "message description"
+        sourceType:
+          $ref: "#/components/schemas/ErrorSourceType"
+        source:
+          type: string
+          description: Source of the error.
+          example: "source"
+    ErrorReason:
+      type: string
+      description: Error status.
+      nullable: true
+      enum:
+        - INVALID_ARGUMENT
+        - INVALID_STATE
+        - UNAUTHENTICATED
+        - PERMISSION_DENIED
+        - LOCKED
+        - COMPLIANCE_REQUIRED
+        - NOT_FOUND
+        - ABORTED
+        - ALREADY_EXISTS
+        - RESOURCE_EXHAUSTED
+        - CANCELLED
+        - DATA_LOSS
+        - INTERNAL
+        - NOT_IMPLEMENTED
+        - UNAVAILABLE
+        - DEADLINE_EXCEEDED
+        - UNPROVISIONED_PROFILE_NOT_FOUND
+        - UNPROVISIONED_PROFILE_LOCKED
+        - SCA_REQUIRED
+        - CANNOT_LOCATE_PROFILE
+        - CVC_VERIFICATION_REQUIRED
+        - CVC_COMPLIANCE_VERIFICATION_REQUIRED
+        - INVALID_ISSUER
+        - INVALID_COUNTRY
+        - GUEST_CHECKOUT_NOT_ALLOWED
+        - CARD_AUTH_REQUIRED
+        - CARD_AUTH_COMPLIANCE_REQUIRED
+    ErrorDetailReason:
+      type: string
+      description: Error reason.
+      nullable: true
+      enum:
+        - CANNOT_BE_NULL
+        - INVALID_VALUE
+        - INVALID_FORMAT
+        - ALREADY_EXISTS
+        - INVALID_STATE
+        - CORRUPT_DATA
+        - EXPIRED
+        - EXCESSIVE_ACCOUNTS_PER_CARD
+        - EXCESSIVE_ACCOUNTS_PER_PHONE_NUMBER
+        - ISS_AUTH_REQUIRED
+        - 3DS_REQUIRED
+        - 3DS_SCA_FAILED
+        - ISS_AUTH_FAILED
+        - LOCKED
+        - 3DS_VERS_NOT_SUPPORTED
+        - 3DS_NOT_PERFORMED
+        - 3DS_NOT_SUPPORTED
+        - 3DS_NPA_NOT_SUPPORTED
+        - 3DS_CHALLENGE_CANCELLED
+        - CARD_AUTH_CANCELLED
+        - SUSPENDED_CARD
+    ErrorSourceType:
+      type: string
+      description: Source of error.
+      nullable: true
+      enum:
+        - BODY
+        - HEADER
+        - QUERY
+        - PATH
+
+    AuthenticationMethod:
+      type: object
+      description: The authentication method.
+      required:
+        - authenticationMethodType
+      properties:
+        authenticationMethodType:
+          $ref: '#/components/schemas/AuthenticationMethodType'
+        authenticationSubject:
+          $ref: "#/components/schemas/AuthenticationSubject"
+        uriData:
+          $ref: "#/components/schemas/UriData"
+        authenticationCredentialReference:
+          type: string
+          description: The authentication credential reference.
+          example: "ref"
+        methodAttributes:
+          $ref: "#/components/schemas/MethodAttributes"
+        authenticationCredential:
+          type: string
+          description: The authentication credential.
+          example: "otp"
+
+    AuthenticationMethodType:
+      type: string
+      description: The method used for authentication.
+      nullable: true
+      enum:
+        - SMS_OTP
+        - 3DS_NPA
+        - 3DSPA
+        - MDES_AUTH
+        - EMAIL_OTP
+        - APP_OTP
+        - 3DS
+        - CSC_VALIDATION
+        - MANAGED_AUTHENTICATION
+        - MDES_IDV
+        - FIDO2
+        - APP_AUTHENTICATION
+        - ADDRESS_VERIFICATION
+        - SPC
+
+    AuthenticationSubject:
+      type: string
+      description: The entity performing the authentication.
+      enum:
+        - CONSUMER
+        - CARDHOLDER
+        - CARD
+
+    UriData:
+      type: object
+      description: URI associated with the additional source that the SRC Initiator may use to trigger consent flows.
+      properties:
+        uri:
+          type: string
+          maxLength: 2048
+          description: The URI part.
+          example: "http://uri"
+        uriType:
+          type: string
+          description: The URI type.
+          example: "APP_URI"
+          enum:
+            - APP_URI
+            - WEB_URI
+
+    MethodAttributes:
+      type: object
+      properties:
+        cardSecurityCode:
+          type: string
+          example: '123'
+          description: The card security code.
+        otpValue:
+          type: string
+          example: "123"
+          description: The OTP value.
+        billingAddress:
+          $ref: "#/components/schemas/Address"
+        threeDsData:
+          $ref: "#/components/schemas/ThreeDsData"
+        idToken:
+          $ref: "#/components/schemas/IdToken"
+        supportedManagedAuthMethods:
+          type: array
+          description: List of supported managed authentication methods.
+          items:
+            $ref: "#/components/schemas/SupportedManagedAuthMethod"
+
+    SupportedManagedAuthMethod:
+      type: string
+      nullable: true
+      enum:
+        - LVLR
+    IdToken:
+      type: string
+      format: JWT
+      example: "ihihiyyyygtuyfadsdytwas578qt2e3y2i89qye8qyierhyiqh"
+
+    ThreeDsData:
+      type: object
+
+    Address:
+      type: object
+      properties:
+        addressId:
+          description: Identifier used to point to the address.
+          type: string
+          example: "96636f7f-a5f5-4fed-ad43-5baf12511e2a"
+          pattern: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+        name:
+          type: string
+          description: Max Length = 60. Name of the individual getting billed for the delivered goods or service.
+          maxLength: 60
+          example: "name"
+        line1:
+          type: string
+          maxLength: 75
+          example: "line 1"
+          description: Maximum length is 75. Address line 1. This parameter is required for TAF in Secure Card on File.
+        line2:
+          type: string
+          maxLength: 75
+          example: "line 2"
+          description: Max Length = 75. Address line 2.
+        line3:
+          type: string
+          maxLength: 75
+          example: "line 3"
+          description: Max Length = 75. Address line 3.
+        city:
+          type: string
+          maxLength: 50
+          example: "city"
+          description: Max Length = 50. Address city.
+        state:
+          type: string
+          maxLength: 30
+          example: 'New Jersey'
+          description: Max Length = 30. Address state.
+        countryCode:
+          description: "ISO 3166-1 alpha 2 country code. Address country code. Note: This parameter is required for TAF in Secure Card on File"
+          type: string
+          example: "US"
+        zip:
+          description: Max Length = 16. Address zip or postal code.
+          type: string
+          maxLength: 16
+          example: "12345"
+        createTime:
+          description: Date and time the address was created. UTC time in Unix epoch format.
+          type: string
+          format: numeric
+          example: "1678886400"
+        lastUsedTime:
+          description: Date and time the address was last used. UTC time in Unix epoch format.
+          type: string
+          format: numeric
+          example: "1678886400"
+
+    JSONObject:
+      type: object
+      description: A generic object to pass custom JSON object.
+      example: { "com.mastercard.dcfExperience": "WITHIN_CHECKOUT" }
+
+    srcClientId:
+      type: string
+      maxLength: 255
+      description: |
+        A unique identifier assigned by Mastercard during onboarding which signifies the responsible party Integrating to Mastercard Checkout Solutions (MCS).
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+      example: '6aff5cba-3aac-4fe0-b0cd-a52fc948d0c6'
+    srcDpaId:
+      type: string
+      maxLength: 255
+      description: The registered identifier for the Digital Payment Application (DPA) accessing the service.
+      example: '297b379a-663c-4e31-a019-b3a48701b8ae'
+    serviceId:
+      type: string
+      maxLength: 255
+      description: Unique identifier assigned by Mastercard to create tokens for the onboarded entity.
+      default: "SRC"
+      example: 'SRC'
+    srciTransactionId:
+      type: string
+      maxLength: 255
+      description: Identifier used to audit this request.
+      example: '123'
+    srcCorrelationId:
+      type: string
+      maxLength: 256
+      description: |
+        A unique identifier that correlates two or more requests to a single session.
+        Mastercard Checkout Solutions (MCS) returns a new srcCorrelationId in each response by default.
+        Integrators can provide a previously used srcCorrelationId in subsequent requests to correlate
+        activity under a single ID. Integrators can also generate an ID in the same format.
+        srcCorrelationId is used for tracking and troubleshooting in the Mastercard ecosystem.
+        pattern: ^([0-9a-f]{8}.)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+      example: '6aff5cba-3aac-4fe0-b0cd-a52fc948d0c6'
+    CrossEnrollmentData:
+      type: object
+      required:
+        - srcClientId
+        - srcCorrelationId
+        - destinationRequestorReference
+        - referenceData
+      properties:
+        srcClientId:
+          $ref: "#/components/schemas/srcClientId"
+        srcCorrelationId:
+          $ref: "#/components/schemas/srcCorrelationId"
+        destinationRequestorReference:
+          type: object
+          description: |
+            TRID grouping or destination service ID for the merchant or integrator requesting enrollment data.
+                Enum:
+                  Type: [ TRID, SERVICE_ID ]. The TRID or service ID is shared manually during onboarding.
+                Value: Value of TRID, SERVICE_ID
+          properties:
+            type:
+              type: string
+              description: "The type of destination reference either TRID or SERVICE_ID"
+              example: TRID
+              enum:
+                - TRID
+                - SERVICE_ID
+            value:
+              type: string
+              example: 50123456789
+              description: Destination TRID or destination service ID.
+          example:
+            value:
+              type: TRID
+              value: 50123456789
+        serviceId:
+          $ref: "#/components/schemas/serviceId"
+        referenceData:
+          $ref: "#/components/schemas/EnrolmentReferenceData"
+
+    CrossEnrollmentDataResult:
+      type: object
+      properties:
+        srcCorrelationId:
+          $ref: "#/components/schemas/srcCorrelationId"
+        enrolmentReferenceData:
+          $ref: "#/components/schemas/EnrolmentReferenceData"
+        encryptedBillingAddress:
+          type: string
+          example: "d9385462d3deff78c352ebb3f941ce12"
+          description: >
+            The billing address for the card whose enrollment data is being created or requested. The billing address is in the Address schema format.
+
+    EnrolmentReferenceData:
+      type: object
+      description: |
+        Retrieves the payment reference for a successful enrollment in the destination service ID or TRID.
+      required:
+        - enrolmentReferenceId
+        - enrolmentReferenceType
+      properties:
+        enrolmentReferenceId:
+          type: string
+          example: 7b3de30a-b15e-4578-ab88-ffa41d9119bc
+          description: >
+            This value corresponds to the selected enrolmentReferenceType.
+            Provide the value for the selected enrolmentReferenceType in this request parameter.
+            The response returns the value of enrolmentReferenceType.
+        enrolmentReferenceType:
+          $ref: '#/components/schemas/EnrolmentReferenceType'
+        authorization:
+          description: |
+            Conditional: Integrators that support Click to Pay (C2P) through Mastercard Checkout Solutions (MCS)
+            can let consumers save their card on file after guest checkout. Provide the C2P transaction
+            authorization token in the authorization parameter.
+            This parameter is required when enrolmentReferenceType is SRC_DIGITAL_CARD_ID.
+          example: "eyJraWQiOiIyMDIzMDEyNjExNDM0NS1zdGctbWMtbmV3LWlkZW50aXR5LXZlcmlmaWNhdGlvbi1zcmMtbWFzdGVyY2FyZC1pbnQiLCJ0eXAiOiJKV1QrZXh0LmNwZWNfdG9rZW4iLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJodHRwczpcL1wvbWFzdGVyY2FyZC5jb20iLCJpc3MiOiJodHRwczpcL1wvbWFzdGVyY2FyZC5jb20iLCJzY29wZURhdGEiOiJ7XCJzcmNDbGllbnRJZFwiOlwiMmZiMmNkNTMtYTQ1NC00ODE4LTllNjUtZTU3MjI0MGRiOTIyXCIsXCJzcmNEaWdpdGFsQ2FyZElkXCI6XCIxYTNlNjcwNS03NGUyLTRmNWQtYTY3YS1hYTc3ZjQzOTRjZDFcIixcInNyY1Byb2dyYW1JZFwiOlwiU1JDXCIsXCJzcmNDb3JyZWxhdGlvbklkXCI6XCIwYTJiZWU3Ny1kOTIzLTRiNzItYjYxZS02Y2NmYjc4OTgwYmVcIn0iLCJzY29wZXMiOlsiQ1JPU1NfUFJPR1JBTV9FTlJPTExNRU5UX0NBUkRfVE9LRU4iXSwiZXhwIjoxNjkwNDk0MTM5LCJpYXQiOjE2ODY2MDYxMzksImp0aSI6IjUxNWY1NTIyLWEwMGYtNDA3Ni04OTBmLWQ5Zjk0NTlmN2EyMSJ9.ZLq61Ct1-FgOMnDe06E2NhabCrJYqcTSRvBINE9uw3II48KNCAgWWCotW_tmOlSDM6Y-jdF9zTn9K5i3tMyaortQm4ACpyq9AF9g4LZ4rG3mfR_XNQN5SsfRuduZEOhIo2Tj2GaCaFc2cy0SZckWS2WRa0gDcClVjttpTv0pKQJ6GBxKnGdZcSX8vxeWltikRAiT8rPIDYx2E1K9SkErmWod71o2eGl8nxjDFHtmXIIAPr6GGq8PQZQfnxrNAUF2u002okBKCL__VQEBw1V29Kig0waQzeUoxqxTYvC7l7NYdrN9z4nKcnB70BANEcfSsnnrch2PocjU1xM3LiejdA"
+          type: string
+
+    EnrolmentReferenceType:
+      description: |
+        Type of enrollment reference data passed to Mastercard for enrollment.
+        The enrolmentReferenceType determines the value required for the enrollment reference ID.
+        Accepted value is:
+            SRC_DIGITAL_CARD_ID - Reference to the srcDigitalCardId. Identifies the card to be used for checkout.
+            This is used to cross enroll Click to Pay (C2P) guest checkout credentials into card on file.
+            The value of the srcDigitalCardId must be provided in the enrolmentReferenceId parameter
+        Response:
+            SRC_DIGITAL_CARD_ID - Reference to the srcDigitalCardId. Identifies the card to be used for checkout.
+            This is used to cross enroll Click to Pay (C2P) guest checkout credentials into card on file.
+            The value of the srcDigitalCardId must be provided in the enrolmentReferenceId parameter.
+      type: string
+      example: SRC_DIGITAL_CARD_ID
+      enum:
+        - SRC_DIGITAL_CARD_ID
