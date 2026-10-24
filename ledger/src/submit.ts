@@ -52,20 +52,26 @@ export function resultCode(tx: Validated): string {
   return (tx.meta as TransactionMetadata).TransactionResult
 }
 
+// onSubmit runs right before each `submit` request, so callers can time from the first submit.
 export async function submitTx(
   conn: Connection,
   tx: SubmittableTransaction,
   wallet: Wallet,
   opts: SubmitOptions,
+  onSubmit?: () => void,
 ): Promise<Validated> {
   const type = tx.TransactionType
   for (let attempt = 1; ; attempt++) {
     const client = await conn.ready()
-    // autofill mutates Batch inner transactions, so every attempt starts from a fresh copy.
-    const prepared = structuredClone(tx)
-    prepared.LastLedgerSequence = (await client.getLedgerIndex()) + opts.ledgerOffset
-    const filled = await client.autofill(prepared)
+    // autofill mutates Batch inner transactions, so every attempt starts from a fresh copy. The
+    // placeholder LastLedgerSequence stops autofill fetching its own; ours is set just below.
+    const [validatedLedger, filled] = await Promise.all([
+      client.getLedgerIndex(),
+      client.autofill({ ...structuredClone(tx), LastLedgerSequence: 0 }),
+    ])
+    filled.LastLedgerSequence = validatedLedger + opts.ledgerOffset
     const { tx_blob, hash } = wallet.sign(filled)
+    onSubmit?.()
     const preliminary = (await client.request({ command: 'submit', tx_blob })).result.engine_result
 
     if (preliminary === 'tefPAST_SEQ' && attempt === 1) {
