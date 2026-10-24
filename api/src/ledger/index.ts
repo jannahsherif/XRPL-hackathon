@@ -4,14 +4,15 @@ import { pathToFileURL } from "node:url";
 import type { Config } from "../config.js";
 import type { Ledger } from "../types.js";
 import { createStubLedger } from "./stub.js";
+import { adaptTeamLedger, type TeamLedgerModule } from "./teamLedger.js";
 
-/** Stub funding for each seeded member (the plan pre-funds members with 200-1,000). */
+/** Stub funding mirrors the testnet balances in ledger/ (member-1..5: 5000 / 800 / 800 / 500 / 1200). */
 const STUB_MEMBER_FUNDS: Record<string, string> = {
-  m1: "3000.00",
-  m2: "1000.00",
-  m3: "1000.00",
+  m1: "5000.00",
+  m2: "800.00",
+  m3: "800.00",
   m4: "500.00",
-  m5: "1500.00",
+  m5: "1200.00",
 };
 
 /**
@@ -24,13 +25,13 @@ export async function loadLedger(config: Config): Promise<Ledger> {
   }
   const resolved = path.resolve(process.cwd(), config.ledgerModule);
   const mod = await import(pathToFileURL(resolved).href);
-  const ledger = (mod.default ?? mod) as Partial<Ledger>;
+  const ledger = (mod.default && typeof mod.default.openTab === "function" ? mod.default : mod) as Partial<TeamLedgerModule>;
   for (const fn of ["openTab", "settleTab", "cancelTab", "getBalances"] as const) {
     if (typeof ledger[fn] !== "function") {
       throw new Error(`Ledger module at ${resolved} is missing ${fn}()`);
     }
   }
-  return ledger as Ledger;
+  return adaptTeamLedger(ledger as TeamLedgerModule);
 }
 
 export function ledgerErrorCode(err: unknown): string {

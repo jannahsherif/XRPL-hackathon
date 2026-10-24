@@ -223,7 +223,8 @@ describe("settlement", () => {
     service.exit(tab.id);
     await runGrace();
 
-    expect(ledger.settleTab).toHaveBeenCalledWith(expect.objectContaining({ amount: "125.08", tipAmount: "19.08" }));
+    // Ledger contract: amount excludes the tip.
+    expect(ledger.settleTab).toHaveBeenCalledWith(expect.objectContaining({ amount: "106.00", tipAmount: "19.08" }));
     expect(tab.status).toBe("settled");
     expect(tab.tipCents).toBe(1908);
     expect(tab.settlement).toMatchObject({ toVenue: "125.08", toMember: "474.92", elapsedMs: 1234 });
@@ -293,7 +294,7 @@ describe("settlement", () => {
     service.exit(tab.id);
     service.setTip(tab.id, 30); // $72.60 would exceed $300
     await runGrace();
-    expect(ledger.settleTab).toHaveBeenCalledWith(expect.objectContaining({ amount: "300.00", tipAmount: "58.00" }));
+    expect(ledger.settleTab).toHaveBeenCalledWith(expect.objectContaining({ amount: "242.00", tipAmount: "58.00" }));
     expect(tab.settlement?.toMember).toBe("0.00");
   });
 
@@ -352,7 +353,7 @@ describe("hold path", () => {
     service.exit(tab.id);
     await runGrace();
     await service.approve(tab.id);
-    expect(ledger.settleTab).toHaveBeenCalledWith(expect.objectContaining({ amount: "1000.00", tipAmount: "100.00" }));
+    expect(ledger.settleTab).toHaveBeenCalledWith(expect.objectContaining({ amount: "900.00", tipAmount: "100.00" }));
     expect(tab.status).toBe("settled");
   });
 
@@ -607,12 +608,15 @@ describe("policy", () => {
 });
 
 describe("openSeedEscrows (LEDGER_MODE=module)", () => {
-  it("opens real escrows for seeded tabs and emits updates", async () => {
+  it("opens real escrows only for the two stage tabs (m1 demo, m5 anomaly)", async () => {
     const { service, ledger, ofType } = makeService({ config: { ledgerMode: "module" } });
     await service.openSeedEscrows();
-    expect(ledger.openTab).toHaveBeenCalledTimes(6);
-    expect(service.snapshot().tabs.every((t) => t.escrow.txHash)).toBe(true);
-    expect(ofType("tab.updated").filter((e) => (e.data as { change: string }).change === "escrow_opened")).toHaveLength(6);
+    expect(ledger.openTab).toHaveBeenCalledTimes(2);
+    expect(ledger.openTab.mock.calls.map((c) => c[0].memberId)).toEqual(["m1", "m5"]);
+    const live = service.snapshot().tabs.filter((t) => t.escrow.txHash).map((t) => t.id);
+    expect(live).toEqual(["t1", "t5"]);
+    expect(service.snapshot().tabs.filter((t) => !t.escrow.txHash).every((t) => t.escrow.seq === null)).toBe(true);
+    expect(ofType("tab.updated").filter((e) => (e.data as { change: string }).change === "escrow_opened")).toHaveLength(2);
   });
 
   it("keeps going when one escrow fails", async () => {
@@ -621,7 +625,7 @@ describe("openSeedEscrows (LEDGER_MODE=module)", () => {
     const openTab = vi.fn(base.openTab).mockRejectedValueOnce(Object.assign(new Error("x"), { code: "INSUFFICIENT_FUNDS" }));
     const { service } = makeService({ ledger: fakeLedger({ openTab }), config: { ledgerMode: "module" } });
     await service.openSeedEscrows();
-    expect(service.snapshot().tabs.filter((t) => t.escrow.txHash)).toHaveLength(5);
+    expect(service.snapshot().tabs.filter((t) => t.escrow.txHash)).toHaveLength(1);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("INSUFFICIENT_FUNDS"));
   });
 });

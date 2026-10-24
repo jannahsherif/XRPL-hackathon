@@ -5,7 +5,7 @@
   "description": "Settle backend: tab state machine, fake POS, grace timer, settlement agent, manager approval, metrics and live events.",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
     "dev": "DEMO=1 tsx watch src/server.ts",
@@ -15,7 +15,9 @@
     "test": "vitest run",
     "seed:json": "tsx scripts/export-seed.ts",
     "test:coverage": "vitest run --coverage",
-    "test:agent": "python3 -m pytest -q -p no:cacheprovider agent/tests"
+    "test:agent": "python3 -m pytest -q -p no:cacheprovider agent/tests",
+    "test:ledger-live": "LEDGER_LIVE=1 vitest run test/integration/ledger.live.test.ts",
+    "test:integration": "vitest run test/integration"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-agentcore": "3.1149.0",

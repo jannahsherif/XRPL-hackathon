@@ -31,9 +31,11 @@ export function fakeLedger(overrides: Partial<LedgerMocks> = {}) {
       const txHash = hash();
       return { escrowSeq: ++seq, txHash, explorerUrl: `https://testnet.xrpl.org/transactions/${txHash}`, ledgerIndex: 100 + seq };
     }),
-    settleTab: vi.fn(async ({ tab, amount }: { tab: Tab; amount: string; tipAmount: string }) => {
+    // Same contract as ledger/: amount excludes the tip, and spending past the allowance throws.
+    settleTab: vi.fn(async ({ tab, amount, tipAmount }: { tab: Tab; amount: string; tipAmount: string }) => {
       const allowance = decimalToCents(tab.allowance);
-      const toVenue = Math.min(decimalToCents(amount), allowance);
+      const toVenue = decimalToCents(amount) + decimalToCents(tipAmount);
+      if (toVenue > allowance) throw Object.assign(new Error("exceeds the escrowed allowance"), { code: "INSUFFICIENT_FUNDS" });
       return {
         finishTxHash: hash(),
         refundTxHash: allowance - toVenue > 0 ? hash() : null,

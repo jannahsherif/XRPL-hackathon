@@ -60,9 +60,36 @@ Then open `http://localhost:8080/state` and stream `curl -N http://localhost:808
 
 See [.env.example](.env.example).
 
-### Plugging in Alex's ledger
+### Running against Alex's ledger (XRPL testnet)
 
-Put the module at the repo root as `ledger/index.js`, exporting `openTab`, `settleTab`, `cancelTab` and `getBalances` (named exports or a default object). Then run with `LEDGER_MODE=module`. The loader checks that all four functions exist at boot. Ledger errors that carry a `code` (`INSUFFICIENT_FUNDS`, `ESCROW_NOT_FOUND`, `LEDGER_TIMEOUT`) move the tab to `held` with that code in the reason, so a manager can retry with approve.
+```bash
+cd ledger && npm install                      # once
+# put Alex's ledger/.env in place (testnet seeds; never commit)
+cd ../api
+LEDGER_MODE=module SEED_LIVE_ESCROWS=1 npm run dev   # LEDGER_MODULE defaults to ../ledger/src/index.ts
+```
+
+How the API maps onto the ledger module ([src/ledger/teamLedger.ts](src/ledger/teamLedger.ts)):
+
+| Backend | Ledger |
+|---|---|
+| member ids `m1`–`m5` | `member-1`–`member-5` (`ledger/accounts.json`) |
+| `tab.escrow.seq` | top-level `{ memberId, escrowSeq }` on settle and cancel |
+| `amount` = tab total, `tipAmount` = tip | refund = allowance − amount − tip; spending past the allowance throws `INSUFFICIENT_FUNDS` (the hold rules catch it first) |
+| `tab.settlement` | also carries `submittedAt`, `validatedAt`, `mode` (`batch` or `sequential`) and `batchTxHash` |
+
+- **Seeded escrows:** `SEED_LIVE_ESCROWS=1` opens real escrows only for the two stage tabs, `t1` (m1's demo tab) and `t5` (m5's anomaly tab). The other four stay display-only (`seq: null`) and hold with `ESCROW_NOT_FOUND` if exited.
+- **Timing:** `openTab` takes 3–6 s, and settling waits for FinishAfter (up to about 15 s after open) plus 3.5–7 s to validation. Don't exit a tab within 15 s of opening it.
+- **Error codes to HTTP:** `INVALID_INPUT` 400, `INSUFFICIENT_FUNDS` 402, `ESCROW_NOT_FOUND` 409, `LEDGER_REJECTED` 502, `LEDGER_TIMEOUT` 504. Responses look like `{ error, code }`.
+- **Restoring balances:** `/demo/reset` cancels live tabs but doesn't restore balances. `npm run demo:reset` in `ledger/` does.
+- **In AWS:** put `VENUE_SEED` and `MEMBER_1_SEED`…`MEMBER_5_SEED` in `settle/<stage>/ledger-env`, never `ISSUER_SEED`.
+
+**Integration tests** ([test/integration/](test/integration/)):
+
+| Command | What it runs |
+|---|---|
+| `npm run test:integration` | Offline, and in CI. Loads the real ledger package; runs Alex's real `createLedger()` with throwaway wallets (all pre-network validation); drives every API flow against a ledger with his exact contract, built on his real amount math and `LedgerError` |
+| `npm run test:ledger-live` | Against XRPL testnet with `ledger/.env`: happy path, anomaly hold then approve, manual close and refund, and `INSUFFICIENT_FUNDS` → 402, all checked against on-chain balances. Run `npm run demo:reset` in `ledger/` afterwards |
 
 ## API (contract)
 

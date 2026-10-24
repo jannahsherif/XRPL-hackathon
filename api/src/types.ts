@@ -29,6 +29,12 @@ export interface Settlement {
   toVenue: string;
   toMember: string;
   elapsedMs: number;
+  /** Additive (ledger): when the first transaction was submitted and when the last was validated (ISO 8601). */
+  submittedAt?: string;
+  validatedAt?: string;
+  /** Additive (ledger): "batch" (one all-or-nothing Batch), "sequential" (finish then refund), or "x402" (AP4M). */
+  mode?: "batch" | "sequential" | "x402";
+  batchTxHash?: string;
 }
 
 export interface Hold {
@@ -192,14 +198,19 @@ export interface SettleTabResult {
   toMember: string;
   elapsedMs: number;
   explorerUrls: string[];
+  submittedAt?: string;
+  validatedAt?: string;
+  mode?: Settlement["mode"];
+  batchTxHash?: string;
   ap4m?: NonNullable<Ap4mTabInfo["payment"]>;
 }
 
 export interface Ledger {
   openTab(args: { memberId: string; allowance: string }): Promise<OpenTabResult>;
+  /** `amount` is the tab total WITHOUT the tip; the member gets back allowance - amount - tipAmount. */
   settleTab(args: { tab: Tab; amount: string; tipAmount: string }): Promise<SettleTabResult>;
   cancelTab(args: { tab: Tab }): Promise<{ txHash: string }>;
   getBalances(): Promise<{ venue: string; members: Record<string, string> }>;
 }
 
-export type LedgerErrorCode = "INSUFFICIENT_FUNDS" | "ESCROW_NOT_FOUND" | "LEDGER_TIMEOUT";
+export type LedgerErrorCode = "INSUFFICIENT_FUNDS" | "ESCROW_NOT_FOUND" | "LEDGER_TIMEOUT" | "LEDGER_REJECTED" | "INVALID_INPUT";

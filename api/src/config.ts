@@ -13,7 +13,7 @@ export const config = {
    * "ap4m" settles over Mastercard Agent Pay for Machines (Channel + x402 Voucher + RLUSD on XRPL EVM).
    */
   ledgerMode: (env.LEDGER_MODE ?? "stub") as "stub" | "module" | "ap4m",
-  ledgerModule: env.LEDGER_MODULE ?? "../ledger/index.js",
+  ledgerModule: env.LEDGER_MODULE ?? "../ledger/src/index.ts",
   ledgerStubDelayMs: Number(env.LEDGER_STUB_DELAY_MS ?? 3000),
   /** Open real escrows for the six seeded tabs at boot (only with LEDGER_MODE=module). */
   seedLiveEscrows: env.SEED_LIVE_ESCROWS === "1",

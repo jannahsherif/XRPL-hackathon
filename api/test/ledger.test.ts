@@ -58,10 +58,11 @@ describe("stub ledger (contract-identical)", () => {
     expect((await ledger.getBalances()).members.m1).toBe("400.00");
   });
 
-  it("settleTab sends the amount to the venue and refunds the remainder", async () => {
+  it("settleTab sends amount + tip to the venue and refunds the remainder (amount excludes the tip)", async () => {
     const ledger = createStubLedger(0, { m1: "1000.00" });
-    const result = await ledger.settleTab({ tab: tab(), amount: "127.20", tipAmount: "21.20" });
-    expect(result).toMatchObject({ toVenue: "127.20", toMember: "372.80" });
+    const result = await ledger.settleTab({ tab: tab(), amount: "106.00", tipAmount: "21.20" });
+    expect(result).toMatchObject({ toVenue: "127.20", toMember: "372.80", mode: "sequential" });
+    expect(Date.parse(result.validatedAt!)).toBeGreaterThanOrEqual(Date.parse(result.submittedAt!));
     expect(result.finishTxHash).toMatch(/^[0-9A-F]{64}$/);
     expect(result.refundTxHash).toMatch(/^[0-9A-F]{64}$/);
     expect(result.explorerUrls).toHaveLength(2);
@@ -78,10 +79,10 @@ describe("stub ledger (contract-identical)", () => {
     expect(result.explorerUrls).toHaveLength(1);
   });
 
-  it("never releases more than the allowance", async () => {
+  it("throws INSUFFICIENT_FUNDS instead of clamping when amount + tip exceeds the allowance", async () => {
     const ledger = createStubLedger(0, {});
-    const result = await ledger.settleTab({ tab: tab(), amount: "900.00", tipAmount: "0.00" });
-    expect(result.toVenue).toBe("500.00");
+    await expect(ledger.settleTab({ tab: tab(), amount: "900.00", tipAmount: "0.00" })).rejects.toMatchObject({ code: "INSUFFICIENT_FUNDS" });
+    await expect(ledger.settleTab({ tab: tab(), amount: "450.00", tipAmount: "60.00" })).rejects.toMatchObject({ code: "INSUFFICIENT_FUNDS" });
   });
 
   it("fails with ESCROW_NOT_FOUND for a tab without an escrow", async () => {

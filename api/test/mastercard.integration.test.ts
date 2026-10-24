@@ -161,8 +161,8 @@ describe("Mastercard trusted payment loop (LEDGER_MODE=ap4m, simulated network)"
     await openWithItems("m1", []); // 10 RLUSD
     await openWithItems("m5", []); // 10 RLUSD
     const res = await inject("POST", "/tabs", { memberId: "m3" });
-    expect(res.statusCode).toBe(500);
-    expect(res.json().error).toMatch(/exceeds the funded budget/);
+    expect(res.statusCode).toBe(402);
+    expect(res.json()).toMatchObject({ code: "BUDGET_EXCEEDED", error: expect.stringMatching(/exceeds the funded budget/) });
   });
 });
 

@@ -236,10 +236,14 @@ export class SettleService {
     this.publishMetrics();
   }
 
-  /** Optionally replace the seeded tabs' placeholder escrows with real ones (LEDGER_MODE=module). */
+  /**
+   * Open real escrows for the seeded tabs that settle on stage (SEED_TABS liveEscrow: m1's demo tab
+   * and m5's anomaly tab). The other seeded tabs stay display-only with seq: null.
+   */
   async openSeedEscrows(): Promise<void> {
+    const live = new Set(SEED_TABS.filter((s) => s.liveEscrow).map((s) => s.id));
     for (const tab of this.tabs.values()) {
-      if (tab.escrow.txHash) continue;
+      if (tab.escrow.txHash || !live.has(tab.id)) continue;
       try {
         const escrow = await this.ledger.openTab({ memberId: tab.memberId, allowance: tab.allowance });
         tab.escrow = { seq: escrow.escrowSeq, txHash: escrow.txHash, explorerUrl: escrow.explorerUrl };
@@ -303,7 +307,8 @@ export class SettleService {
     const tipPct = this.memberTipPct.get(tab.id) ?? decision.tipPct;
     // Never charge more than the escrow holds: trim the tip if needed.
     tab.tipCents = Math.min(tipCentsFor(tab.totalCents, tipPct), allowanceCents - tab.totalCents);
-    const amount = centsToDecimal(tab.totalCents + tab.tipCents);
+    // Ledger contract: amount is the tab total without the tip (refund = allowance - amount - tip).
+    const amount = centsToDecimal(tab.totalCents);
 
     if (this.intent) {
       const check = await this.intent.verifyAndRecord(tab, tab.totalCents + tab.tipCents);
@@ -325,6 +330,10 @@ export class SettleService {
         toVenue: result.toVenue,
         toMember: result.toMember,
         elapsedMs: result.elapsedMs,
+        ...(result.submittedAt ? { submittedAt: result.submittedAt } : {}),
+        ...(result.validatedAt ? { validatedAt: result.validatedAt } : {}),
+        ...(result.mode ? { mode: result.mode } : {}),
+        ...(result.batchTxHash ? { batchTxHash: result.batchTxHash } : {}),
       };
       if (tab.ap4m && result.ap4m) tab.ap4m.payment = result.ap4m;
       if (tab.mandate) tab.mandate.status = "used";

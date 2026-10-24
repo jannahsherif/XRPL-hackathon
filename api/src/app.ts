@@ -21,6 +21,21 @@ export interface AppDeps {
 
 type IdParams = { Params: { id: string } };
 
+/** Ledger (ledger/) and AP4M error codes -> HTTP status. */
+export const ERROR_STATUS: Record<string, number> = {
+  INVALID_INPUT: 400,
+  INSUFFICIENT_FUNDS: 402,
+  BUDGET_EXCEEDED: 402,
+  OVER_CAP: 402,
+  KYA_REJECTED: 403,
+  ESCROW_NOT_FOUND: 409,
+  CHANNEL_NOT_FOUND: 409,
+  CHANNEL_CLOSED: 409,
+  LEDGER_REJECTED: 502,
+  SERVICE_ERROR: 502,
+  LEDGER_TIMEOUT: 504,
+};
+
 export async function buildApp(config: Config, deps: AppDeps = {}) {
   const bus = new EventBus();
   const mastercard = buildMastercardStack(config, (type, data) => bus.publish(type, data));
@@ -31,10 +46,11 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
   const app: FastifyInstance = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
   await app.register(cors, { origin: config.corsOrigin === "*" ? true : config.corsOrigin.split(",") });
 
-  app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
-    const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
+  app.setErrorHandler((err: Error & { statusCode?: number; code?: string }, _req, reply) => {
+    const byCode = err.code ? ERROR_STATUS[err.code] : undefined;
+    const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : (byCode ?? 500);
     if (status >= 500) app.log.error(err);
-    reply.status(status).send({ error: err.message });
+    reply.status(status).send({ error: err.message, ...(byCode ? { code: err.code } : {}) });
   });
 
   app.get("/health", async () => ({ ok: true, at: new Date().toISOString() }));
@@ -69,6 +85,9 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
   app.post<IdParams>("/tabs/:id/close", async (req) => service.close(req.params.id));
 
   app.get("/metrics", async () => service.metrics());
+
+  /** Ledger balances (venue + members) in token units, straight from the ledger module. */
+  app.get("/balances", async () => ledger.getBalances());
 
   app.get("/policy", async () => service.snapshot().policy);
   app.patch<{ Body: Record<string, unknown> }>("/policy", async (req) => service.updatePolicy(req.body ?? {}));

@@ -1,6 +1,7 @@
 # Build context is the repo root so Alex's ledger/ module ships in the image:
 #   docker build -f api/Dockerfile --platform linux/arm64 .
-FROM node:22-alpine AS build
+# Node 24: loads ledger/src/index.ts natively (type stripping), per ledger/README.md.
+FROM node:24-alpine AS build
 WORKDIR /app/api
 COPY api/package.json api/package-lock.json api/.npmrc ./
 RUN npm ci --no-audit --no-fund
@@ -8,10 +9,10 @@ COPY api/tsconfig.json api/tsconfig.build.json ./
 COPY api/src ./src
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-alpine
+FROM node:24-alpine
 ENV NODE_ENV=production PORT=8080
 WORKDIR /app
-# ledger/ may be empty until Alex's module lands; CI creates it if missing.
+# Alex's ledger module (TypeScript, loaded directly). Seeds come from Secrets Manager, never the image.
 COPY ledger ./ledger
 RUN if [ -f ledger/package.json ]; then cd ledger && npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund; fi
 COPY --from=build /app/api/node_modules ./api/node_modules

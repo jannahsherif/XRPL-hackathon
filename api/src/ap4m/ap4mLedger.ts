@@ -73,8 +73,10 @@ export class Ap4mLedger implements Ledger {
     if (!channelId) throw Object.assign(new Error("Tab has no AP4M Channel"), { code: "ESCROW_NOT_FOUND" });
     if (!this.fetcher) throw Object.assign(new Error("x402 client not configured"), { code: "LEDGER_ERROR" });
 
-    const amountCents = decimalToCents(amount);
+    // Ledger contract: `amount` excludes the tip, so the Voucher covers amount + tip.
+    const amountCents = decimalToCents(amount) + decimalToCents(tipAmount);
     const amountWei = centsToWei(amountCents, this.opts.usdPerRlusd);
+    const submittedAt = new Date(started).toISOString();
     const resourceUrl = this.opts.resourceUrl(tab.id);
     this.merchant.createInvoice({
       tabId: tab.id,
@@ -90,7 +92,7 @@ export class Ap4mLedger implements Ledger {
           items: tab.items,
           totalCents: tab.totalCents,
           tipCents: decimalToCents(tipAmount),
-          amountUsd: amount,
+          amountUsd: centsToDecimal(amountCents),
           amountRlusd: formatRlusd(amountWei),
           mandateHash: tab.mandate?.hash ?? null,
         },
@@ -124,6 +126,9 @@ export class Ap4mLedger implements Ledger {
       toMember: centsToDecimal(allowanceCents - toVenueCents),
       elapsedMs: Date.now() - started,
       explorerUrls: this.opts.network.mode === "live" ? hashes.map(txUrl) : [],
+      submittedAt,
+      validatedAt: new Date().toISOString(),
+      mode: "x402",
       ap4m: {
         amountWei: claim.amountWei.toString(),
         amountRlusd: formatRlusd(claim.amountWei),

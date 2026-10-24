@@ -44,6 +44,8 @@ export const SEED_MEMBERS: Member[] = [
 
 type SeedTab = Omit<Tab, "memberName" | "allowance" | "escrow" | "settlement" | "hold" | "graceEndsAt" | "totalCents" | "tipCents" | "mandate" | "ap4m"> & {
   minutesAgo: number;
+  /** Open a real escrow for this tab at boot (SEED_LIVE_ESCROWS=1); only the tabs that settle on stage. */
+  liveEscrow?: boolean;
 };
 
 const item = (id: string, qty = 1) => {
@@ -53,10 +55,10 @@ const item = (id: string, qty = 1) => {
 
 // Six open tabs for the dashboard. t6 is a second seat on m1's party.
 export const SEED_TABS: SeedTab[] = [
-  { id: "t1", memberId: "m1", seat: "Bar 3", status: "ordering", items: [item("martini", 2), item("oysters")], openedAt: "", minutesAgo: 52 },
+  { id: "t1", memberId: "m1", seat: "Bar 3", status: "ordering", items: [item("martini", 2), item("oysters")], openedAt: "", minutesAgo: 52, liveEscrow: true },
   { id: "t2", memberId: "m2", seat: "Table 12", status: "ordering", items: [item("steak"), item("wine-glass", 2)], openedAt: "", minutesAgo: 41 },
   { id: "t3", memberId: "m3", seat: "Terrace 4", status: "open", items: [], openedAt: "", minutesAgo: 8 },
   { id: "t4", memberId: "m4", seat: "Bar 7", status: "ordering", items: [item("burger"), item("old-fashioned")], openedAt: "", minutesAgo: 33 },
-  { id: "t5", memberId: "m5", seat: "Library 2", status: "ordering", items: [item("salmon"), item("espresso")], openedAt: "", minutesAgo: 27 },
+  { id: "t5", memberId: "m5", seat: "Library 2", status: "ordering", items: [item("salmon"), item("espresso")], openedAt: "", minutesAgo: 27, liveEscrow: true },
   { id: "t6", memberId: "m1", seat: "Bar 4", status: "ordering", items: [item("fries"), item("martini")], openedAt: "", minutesAgo: 49 },
 ];

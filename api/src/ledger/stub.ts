@@ -27,12 +27,17 @@ export function createStubLedger(delayMs: number, members: Record<string, string
       return { escrowSeq: ++seq, txHash, explorerUrl: `${EXPLORER}/${txHash}`, ledgerIndex: 9_000_000 + seq };
     },
 
-    async settleTab({ tab, amount }) {
+    async settleTab({ tab, amount, tipAmount }) {
       const started = Date.now();
+      const submittedAt = new Date(started).toISOString();
       await sleep(delayMs);
       if (!tab.escrow.seq) throw Object.assign(new Error("No escrow for tab"), { code: "ESCROW_NOT_FOUND" });
       const allowance = decimalToCents(tab.allowance);
-      const toVenue = Math.min(decimalToCents(amount), allowance);
+      // Same contract as ledger/: amount excludes the tip; refund = allowance - amount - tip.
+      const toVenue = decimalToCents(amount) + decimalToCents(tipAmount);
+      if (toVenue > allowance) {
+        throw Object.assign(new Error(`amount ${amount} + tip ${tipAmount} exceeds the escrowed allowance ${tab.allowance}`), { code: "INSUFFICIENT_FUNDS" });
+      }
       const toMember = allowance - toVenue;
       venueCents += toVenue;
       balances.set(tab.memberId, (balances.get(tab.memberId) ?? 0) + toMember);
@@ -45,6 +50,9 @@ export function createStubLedger(delayMs: number, members: Record<string, string
         toMember: centsToDecimal(toMember),
         elapsedMs: Date.now() - started,
         explorerUrls: [finishTxHash, refundTxHash].filter(Boolean).map((h) => `${EXPLORER}/${h}`),
+        submittedAt,
+        validatedAt: new Date().toISOString(),
+        mode: "sequential",
       };
     },
 
