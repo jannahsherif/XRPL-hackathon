@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "setup:token": "tsx scripts/issue-token.ts",
-    "demo:happy-path": "tsx scripts/demo-happy-path.ts"
+    "demo:happy-path": "tsx scripts/demo-happy-path.ts",
+    "demo:reset": "tsx scripts/demo-reset.ts"
   },
   "engines": {
     "node": ">=20.12"

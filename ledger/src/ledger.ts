@@ -268,9 +268,21 @@ export function createLedger(config: LedgerConfig = {}) {
     }
   }
 
-
-  async function cancelTab(_args: { tab: Tab }): Promise<CancelTabResult> {
-    throw new Error('cancelTab lands in L5')
+  // L5: close a tab with nothing spent. An expired escrow (past CancelAfter) can only be cancelled,
+  // which returns it to the member; before that, the venue finishes it and refunds it in full.
+  async function cancelTab({ tab }: { tab: Tab }): Promise<CancelTabResult> {
+    const escrow = await getTabEscrow(tab)
+    if ((await validatedCloseTime()) > escrow.cancelAfter) {
+      const { tx } = await submitTx(
+        conn,
+        { TransactionType: 'EscrowCancel', Account: venue.address, Owner: escrow.owner, OfferSequence: tab.escrowSeq },
+        venue,
+        opts,
+      )
+      return { txHash: tx.hash, explorerUrl: urlFor(tx.hash), via: 'EscrowCancel' }
+    }
+    const { refundTxHash } = await settleTab({ tab, amount: '0', tipAmount: '0' })
+    return { txHash: refundTxHash!, explorerUrl: urlFor(refundTxHash!), via: 'refund' }
   }
 
   // L6: trust-line balances in the tab token. Tokens locked in open tabs are not included.
