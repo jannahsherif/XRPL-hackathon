@@ -23,7 +23,7 @@ npm run typecheck
 ```
 
 `SEED_BALANCES` in `src/config.ts` is the one place balances are set, sized to cover the API's
-allowances with headroom (member-1 has two seeded tabs, 4,500 together):
+allowances with headroom (member-1 has two seeded tabs, 2,000 together; all six seeded tabs total 4,500):
 
 | account | venue | member-1 | member-2 | member-3 | member-4 | member-5 |
 |---|---|---|---|---|---|---|

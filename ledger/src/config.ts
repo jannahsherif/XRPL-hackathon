@@ -29,7 +29,7 @@ export function resolveToken(name: TokenName, accounts: { issuer: string }): Tok
 export const MEMBER_IDS = ['member-1', 'member-2', 'member-3', 'member-4', 'member-5']
 
 // The token balances setup:token and demo:reset put every account back to. They cover the API's
-// allowances with headroom: member-1 is the demo member and has two seeded tabs (4,500 together).
+// allowances with headroom: member-1 is the demo member and has two seeded tabs (2,000 together).
 export const SEED_BALANCES: Record<string, string> = {
   venue: '0',
   'member-1': '5000',
