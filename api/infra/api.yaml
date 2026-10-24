@@ -18,9 +18,21 @@ Parameters:
     Description: DEMO=1 shortens grace to 10 s and seeds the wireframe data.
   LedgerMode:
     Type: String
-    AllowedValues: [stub, module]
+    AllowedValues: [stub, module, ap4m]
     Default: stub
-    Description: stub fakes hashes; module imports Alex's ledger/ (needs the ledger secret filled in).
+    Description: >-
+      stub fakes hashes; module imports Alex's ledger/ (needs the ledger secret);
+      ap4m settles over Mastercard Agent Pay for Machines on XRPL EVM (needs the ap4m secret for live).
+  Ap4mNetwork:
+    Type: String
+    AllowedValues: [simulated, live]
+    Default: simulated
+    Description: With LedgerMode=ap4m, simulated enforces the AP4M rules in memory; live uses the XRPL EVM Testnet.
+  IntentMode:
+    Type: String
+    AllowedValues: ["on", "off"]
+    Default: "on"
+    Description: Mastercard Verifiable Intent mandates per tab.
   CorsOrigin:
     Type: String
     Default: "*"
@@ -197,6 +209,18 @@ Resources:
         addresses). Fill in with `aws secretsmanager put-secret-value`. Never commit keys.
       SecretString: "{}"
 
+  Ap4mSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub settle/${Stage}/ap4m-env
+      Description: >-
+        JSON object for live AP4M: AP4M_TEAM_NAME, AP4M_AGENT_PRIVATE_KEY (Agent payment key),
+        AP4M_MERCHANT_SUBMITTER_KEY (pays XRP gas for redeemVoucher), AP4M_MERCHANT_ID, AP4M_MERCHANT_PAYOUT.
+        Fill in with `aws secretsmanager put-secret-value`. Never commit keys.
+      SecretString: "{}"
+
   # ---------------------------------------------------------------- ECS
   Cluster:
     Type: AWS::ECS::Cluster
@@ -230,7 +254,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
-                Resource: !Ref LedgerSecret
+                Resource: [!Ref LedgerSecret, !Ref Ap4mSecret]
 
   TaskRole:
     Type: AWS::IAM::Role
@@ -289,9 +313,15 @@ Resources:
                 Fn::Sub: settle-${Stage}-agent-endpoint
             - { Name: AWS_REGION, Value: !Ref AWS::Region }
             - { Name: CORS_ORIGIN, Value: !Ref CorsOrigin }
+            - { Name: AP4M_NETWORK, Value: !Ref Ap4mNetwork }
+            - { Name: INTENT_MODE, Value: !Ref IntentMode }
+            - Name: PUBLIC_BASE_URL
+              Value: !Sub https://${Distribution.DomainName}
           Secrets:
             - Name: LEDGER_ENV_JSON
               ValueFrom: !Ref LedgerSecret
+            - Name: AP4M_ENV_JSON
+              ValueFrom: !Ref Ap4mSecret
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -333,5 +363,7 @@ Outputs:
     Value: !GetAtt LoadBalancer.DNSName
   LedgerSecretArn:
     Value: !Ref LedgerSecret
+  Ap4mSecretArn:
+    Value: !Ref Ap4mSecret
   ClusterName:
     Value: !Ref Cluster

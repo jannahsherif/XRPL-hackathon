@@ -1,0 +1,38 @@
+sequenceDiagram
+  autonumber
+  participant M as Member (Agent Principal)
+  participant API as Settle API
+  participant VI as Verifiable Intent
+  participant AG as Settle Agent (payment key)
+  participant V as Venue Merchant (x402 payee facilitator)
+  participant PL as PaymentLedger (XRPL EVM)
+  participant PR as ParticipantRegistry
+  participant SVC as AP4M service
+
+  Note over AG,PR: REGISTER (once): PSP-attested KYA records for Agent, Principal and Merchant
+  M->>API: POST /tabs {memberId}
+  API->>VI: issue mandate (max = allowance, payee = venue, exp = end of night, cnf = Agent key)
+  VI-->>API: ES256 JWS signed by the member's device key
+  API->>SVC: FUND: requestChannel(cap = allowance)
+  SVC->>PR: Agent + Merchant active? (KYA gate)
+  SVC->>PL: openChannel: pull RLUSD from PooledEscrowVault, bind payout
+  PL-->>API: channelId, cap (Funded ASL)
+  API-->>M: tab.opened + intent.mandate_signed + ap4m.channel_opened (SSE)
+
+  Note over API: ... POS items, member exits, grace timer, agent decides settle ...
+
+  API->>VI: verify mandate (amount ≤ max, payee, expiry, agent)
+  VI-->>API: OK + L3 payment record signed by the Agent
+  AG->>V: PAY: GET /x402/tabs/:id/resource (X-AP4M-CHANNEL-ID)
+  V-->>AG: 402 + PAYMENT-REQUIRED (batch-settlement, RLUSD, amount, payTo, acceptedCumulativeAmount)
+  AG->>AG: check challenge vs authority (network, asset, ledger, payTo, ≤ max, ≤ cap)
+  AG->>V: retry + PAYMENT-SIGNATURE (EIP-712 cumulative Voucher + mandateHash)
+  V->>PL: REDEEM: redeemVoucher(voucher, agentSignature)
+  PL->>PL: verify signer = Channel agent, redeemed < cumulative ≤ cap
+  PL-->>V: VoucherRedeemed(claimId)
+  V-->>AG: 200 + PAYMENT-RESPONSE + resource (tab receipt)
+  API->>SVC: SETTLE: settle(channelId)
+  SVC->>PL: pay (redeemed − settled) RLUSD to venue payout
+  PL-->>API: ClaimPaid + SettlementRecorded + receipt URL
+  API->>SVC: closeChannel (unused cap back to the budget)
+  API-->>M: x402.paid + ap4m.settled + tab.settled (SSE)

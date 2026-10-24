@@ -1,4 +1,6 @@
 import type { SettlementAgent } from "./agent/settlementAgent.js";
+import { fundFromCard, type FundingResult } from "./funding/cardFunding.js";
+import { paymentRecordHash, type IntentService } from "./intent/mandate.js";
 import type { Config } from "./config.js";
 import type { EventBus } from "./events.js";
 import { ledgerErrorCode } from "./ledger/index.js";
@@ -38,8 +40,13 @@ export class SettleService {
     private readonly agent: SettlementAgent,
     private readonly bus: EventBus,
     private readonly config: Config,
+    private readonly extras: { intent?: IntentService | null } = {},
   ) {
     this.seed();
+  }
+
+  get intent(): IntentService | null {
+    return this.extras.intent ?? null;
   }
 
   // Read model ---------------------------------------------------------------
@@ -51,7 +58,13 @@ export class SettleService {
       metrics: this.metrics(),
       menu: this.menu,
       policy: this.policy,
-      mode: { demo: this.config.demo, ledger: this.config.ledgerMode, agent: this.config.agentMode },
+      mode: {
+        demo: this.config.demo,
+        ledger: this.config.ledgerMode,
+        agent: this.config.agentMode,
+        intent: this.intent ? "on" : "off",
+        ...(this.config.ledgerMode === "ap4m" ? { ap4m: this.config.ap4mNetwork } : {}),
+      },
     };
   }
 
@@ -106,7 +119,10 @@ export class SettleService {
       hold: null,
       graceEndsAt: null,
       openedAt: new Date().toISOString(),
+      mandate: null,
+      ap4m: escrow.ap4m ? { ...escrow.ap4m, payment: null } : null,
     };
+    this.issueMandate(tab);
     this.tabs.set(tab.id, tab);
     this.bus.publish("tab.opened", { tab, ledgerIndex: escrow.ledgerIndex });
     this.publishMetrics();
@@ -227,11 +243,28 @@ export class SettleService {
       try {
         const escrow = await this.ledger.openTab({ memberId: tab.memberId, allowance: tab.allowance });
         tab.escrow = { seq: escrow.escrowSeq, txHash: escrow.txHash, explorerUrl: escrow.explorerUrl };
+        if (escrow.ap4m) tab.ap4m = { ...escrow.ap4m, payment: null };
         this.bus.publish("tab.updated", { tab, change: "escrow_opened" });
       } catch (err) {
         console.warn(`seed escrow for ${tab.id} failed: ${ledgerErrorCode(err)}`);
       }
     }
+  }
+
+  /** Top up a member's budget from their Mastercard card on file (SIMULATED funding rail). */
+  fundMember(memberId: string, amountCents: number): FundingResult {
+    const member = this.members.get(memberId);
+    if (!member) throw new NotFoundError(`Unknown member ${memberId}`);
+    const result = fundFromCard(member, amountCents);
+    this.bus.publish("funding.completed", result);
+    return result;
+  }
+
+  private issueMandate(tab: Tab): void {
+    if (!this.intent) return;
+    const { mandate, jws } = this.intent.issue(tab);
+    tab.mandate = mandate;
+    this.bus.publish("intent.mandate_signed", { tabId: tab.id, mandate, jws, memberKey: this.intent.publicJwk(tab.memberId) });
   }
 
   // Settlement flow ----------------------------------------------------------
@@ -272,6 +305,18 @@ export class SettleService {
     tab.tipCents = Math.min(tipCentsFor(tab.totalCents, tipPct), allowanceCents - tab.totalCents);
     const amount = centsToDecimal(tab.totalCents + tab.tipCents);
 
+    if (this.intent) {
+      const check = await this.intent.verifyAndRecord(tab, tab.totalCents + tab.tipCents);
+      if (!check.ok) {
+        if (tab.mandate) tab.mandate.status = "violated";
+        this.bus.publish("intent.violation", { tabId: tab.id, violations: check.violations });
+        this.hold(tab, `Verifiable Intent check failed: ${check.violations.join("; ")}`);
+        return;
+      }
+      tab.mandate!.paymentRecordHash = paymentRecordHash(check.record!);
+      this.bus.publish("intent.verified", { tabId: tab.id, record: check.record, recordHash: tab.mandate!.paymentRecordHash });
+    }
+
     try {
       const result = await this.ledger.settleTab({ tab: structuredClone(tab), amount, tipAmount: centsToDecimal(tab.tipCents) });
       tab.settlement = {
@@ -281,6 +326,8 @@ export class SettleService {
         toMember: result.toMember,
         elapsedMs: result.elapsedMs,
       };
+      if (tab.ap4m && result.ap4m) tab.ap4m.payment = result.ap4m;
+      if (tab.mandate) tab.mandate.status = "used";
       tab.hold = null;
       tab.graceEndsAt = null;
       this.move(tab, "settled");
@@ -367,8 +414,11 @@ export class SettleService {
           hold: null,
           graceEndsAt: null,
           openedAt: new Date(Date.now() - seed.minutesAgo * 60_000).toISOString(),
+          mandate: null,
+          ap4m: null,
         };
         tab.totalCents = totalOf(tab);
+        if (this.intent) tab.mandate = this.intent.issue(tab).mandate;
         return [tab.id, tab];
       }),
     );

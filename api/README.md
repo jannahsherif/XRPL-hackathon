@@ -4,6 +4,18 @@ Liam's layer (Epic 2): one service that owns the tab state machine, fakes the PO
 
 - Architecture, AWS resources and diagrams: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Seed snapshot for the frontend (same shape as `GET /state`): [seed.json](seed.json)
+- Mastercard integration (AP4M x402 Vouchers, Verifiable Intent, card funding): [../submission/MASTERCARD.md](../submission/MASTERCARD.md)
+- AWS write-up (AgentCore + x402/RLUSD): [../submission/AWS.md](../submission/AWS.md)
+
+## Mastercard integration
+
+| Feature | Turn on | Routes and events |
+|---|---|---|
+| **AP4M settlement rail**: a Channel per tab (cap = allowance), x402 + EIP-712 Voucher, RLUSD settle and close | `LEDGER_MODE=ap4m`, `AP4M_NETWORK=simulated \| live` | `GET /ap4m`, `GET /x402/tabs/:id/resource`, `POST /demo/ap4m/over-cap/:id`, `POST /demo/ap4m/unverified-agent/:id`; events `ap4m.channel_opened`, `x402.payment_required`, `x402.paid`, `ap4m.settled`, `ap4m.rejected` |
+| **Verifiable Intent**: member-signed mandate per tab, checked before every payment | `INTENT_MODE=on` (default) | `GET /intent/tabs/:id`, `POST /intent/verify-payment-record`; events `intent.mandate_signed`, `intent.verified`, `intent.violation` |
+| **Card funding** (SIMULATED): top up from the Mastercard card on file | always | `POST /members/:id/fund {amountCents}`; event `funding.completed` |
+
+Tabs gain two additive fields, `mandate` and `ap4m`. Both are null when their feature is off. Members gain `card` and `fundedCents`.
 
 ## Run locally
 

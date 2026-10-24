@@ -46,7 +46,10 @@ def infrastructure() -> None:
         edge_attr=EDGE,
     ):
         frontend = Users("Frontend\n/dashboard /pos\n/member /manager")
-        xrpl = InternetAlt1("XRPL Testnet\nEscrowCreate\nEscrowFinish / Payment")
+        xrpl = InternetAlt1("XRPL Testnet\nEscrowCreate\nEscrowFinish / Payment\n(LEDGER_MODE=module)")
+        with Cluster("Mastercard AP4M (LEDGER_MODE=ap4m)"):
+            ap4m_service = InternetAlt1("AP4M service\nsign-in, channel requests,\nsettle, receipts")
+            evm = InternetAlt1("XRPL EVM Testnet (1449000)\nParticipantRegistry\nPaymentLedger + Vault\nRLUSD")
 
         with Cluster("AWS account (one region)"):
             with Cluster("Bootstrap (once)"):
@@ -61,7 +64,7 @@ def infrastructure() -> None:
                     with Cluster("ECS cluster settle-<stage>"):
                         service = ElasticContainerServiceService("Service api\ndesired = 1")
                         task = Fargate("Fargate task (ARM64)\nNode API + SSE\n+ ledger module")
-                secret = SecretsManager("Secrets Manager\nledger-env")
+                secret = SecretsManager("Secrets Manager\nledger-env\nap4m-env")
                 logs = CloudwatchLogs("CloudWatch Logs\n/settle/<stage>/api")
                 task_role = IAMRole("Task role\nInvokeAgentRuntime")
 
@@ -78,6 +81,9 @@ def infrastructure() -> None:
         runtime >> Edge(**data) >> model
         runtime >> Edge(**control) >> traces
         task >> Edge(label="openTab / settleTab\ncancelTab", **data) >> xrpl
+        task >> Edge(label="x402 + EIP-712 Voucher\nredeemVoucher", **data) >> evm
+        task >> Edge(label="channel / settle / close", **data) >> ap4m_service
+        ap4m_service >> Edge(**control) >> evm
         secret >> Edge(label="LEDGER_ENV_JSON", **control) >> task
         task >> Edge(**control) >> logs
         task_role - Edge(**control) - task

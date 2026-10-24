@@ -14,6 +14,7 @@ export const testConfig = (overrides: Partial<Config> = {}): Config => ({
   ledgerMode: "stub",
   agentMode: "local",
   outstandingSeedCents: 34_218_000,
+  intentMode: "off",
   ...overrides,
 });
 

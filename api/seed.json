@@ -29,7 +29,19 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T19:08:09.168Z"
+      "openedAt": "2026-10-24T20:38:42.084Z",
+      "mandate": {
+        "id": "41a7443f-dbb8-49b5-8b3d-082141cdd1ef",
+        "hash": "sha256:04b3d237c41a17ebc0e5519f8b371df17aaa49df1f227eae42aa3a93c678a7c1",
+        "maxAmount": "1000.00",
+        "currency": "USD",
+        "payee": "venue:settle-demo",
+        "agent": "0x85dE653837b72665ca8bBA6Fc2a68313E92f4198",
+        "expiresAt": "2026-10-25T09:30:42.000Z",
+        "status": "active",
+        "paymentRecordHash": null
+      },
+      "ap4m": null
     },
     {
       "id": "t2",
@@ -60,7 +72,19 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T19:19:09.168Z"
+      "openedAt": "2026-10-24T20:49:42.085Z",
+      "mandate": {
+        "id": "85c2e2d9-642a-4239-b9d4-349e78c83655",
+        "hash": "sha256:5d87d1ab07ea7ba27a81c2666d710221fcd4be7e6e860b58fb8f03c3d6dd16c9",
+        "maxAmount": "600.00",
+        "currency": "USD",
+        "payee": "venue:settle-demo",
+        "agent": "0x85dE653837b72665ca8bBA6Fc2a68313E92f4198",
+        "expiresAt": "2026-10-25T09:30:42.000Z",
+        "status": "active",
+        "paymentRecordHash": null
+      },
+      "ap4m": null
     },
     {
       "id": "t3",
@@ -80,7 +104,19 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T19:52:09.168Z"
+      "openedAt": "2026-10-24T21:22:42.085Z",
+      "mandate": {
+        "id": "6c8fee51-9f5e-48f9-a1d7-747f25d24fd4",
+        "hash": "sha256:288222deeefb7e0fd8d726c2b91c72547a23a1c82c3e4dadac120c7485ee1137",
+        "maxAmount": "600.00",
+        "currency": "USD",
+        "payee": "venue:settle-demo",
+        "agent": "0x85dE653837b72665ca8bBA6Fc2a68313E92f4198",
+        "expiresAt": "2026-10-25T09:30:42.000Z",
+        "status": "active",
+        "paymentRecordHash": null
+      },
+      "ap4m": null
     },
     {
       "id": "t4",
@@ -111,7 +147,19 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T19:27:09.168Z"
+      "openedAt": "2026-10-24T20:57:42.085Z",
+      "mandate": {
+        "id": "d37ed03d-3462-4770-affa-97ab9a480c05",
+        "hash": "sha256:115e7d6ec55692bd0d45f9402c66a4e0f332cb918f1f97ae230b7fbef77cb2e7",
+        "maxAmount": "300.00",
+        "currency": "USD",
+        "payee": "venue:settle-demo",
+        "agent": "0x85dE653837b72665ca8bBA6Fc2a68313E92f4198",
+        "expiresAt": "2026-10-25T09:30:42.000Z",
+        "status": "active",
+        "paymentRecordHash": null
+      },
+      "ap4m": null
     },
     {
       "id": "t5",
@@ -142,7 +190,19 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T19:33:09.168Z"
+      "openedAt": "2026-10-24T21:03:42.085Z",
+      "mandate": {
+        "id": "023ecbdf-12f4-446d-b09e-7d440883fcce",
+        "hash": "sha256:184d0db141590e71c6c6cf71fa7f00a6dae586bba1bf3f1cf17101088e186fd9",
+        "maxAmount": "1000.00",
+        "currency": "USD",
+        "payee": "venue:settle-demo",
+        "agent": "0x85dE653837b72665ca8bBA6Fc2a68313E92f4198",
+        "expiresAt": "2026-10-25T09:30:42.000Z",
+        "status": "active",
+        "paymentRecordHash": null
+      },
+      "ap4m": null
     },
     {
       "id": "t6",
@@ -173,7 +233,19 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T19:11:09.168Z"
+      "openedAt": "2026-10-24T20:41:42.085Z",
+      "mandate": {
+        "id": "30b0f1db-a406-4a19-973a-b96c09cd58d4",
+        "hash": "sha256:7912ea29eca02f2d93408316ad66b16fb1e8c56f7a6bd6bdade260c400c394bf",
+        "maxAmount": "1000.00",
+        "currency": "USD",
+        "payee": "venue:settle-demo",
+        "agent": "0x85dE653837b72665ca8bBA6Fc2a68313E92f4198",
+        "expiresAt": "2026-10-25T09:30:42.000Z",
+        "status": "active",
+        "paymentRecordHash": null
+      },
+      "ap4m": null
     }
   ],
   "members": [
@@ -200,7 +272,13 @@
           "date": "2026-09-30",
           "totalCents": 46620
         }
-      ]
+      ],
+      "card": {
+        "brand": "Mastercard",
+        "last4": "5100",
+        "srcDigitalCardId": "MVCTM15100000000000000US"
+      },
+      "fundedCents": 0
     },
     {
       "id": "m2",
@@ -221,7 +299,13 @@
           "date": "2026-09-28",
           "totalCents": 20520
         }
-      ]
+      ],
+      "card": {
+        "brand": "Mastercard",
+        "last4": "5204",
+        "srcDigitalCardId": "MVCTM25204000000000000US"
+      },
+      "fundedCents": 0
     },
     {
       "id": "m3",
@@ -246,7 +330,13 @@
           "date": "2026-09-24",
           "totalCents": 17205
         }
-      ]
+      ],
+      "card": {
+        "brand": "Mastercard",
+        "last4": "5308",
+        "srcDigitalCardId": "MVCTM35308000000000000US"
+      },
+      "fundedCents": 0
     },
     {
       "id": "m4",
@@ -263,7 +353,13 @@
           "date": "2026-10-03",
           "totalCents": 10530
         }
-      ]
+      ],
+      "card": {
+        "brand": "Mastercard",
+        "last4": "5412",
+        "srcDigitalCardId": "MVCTM45412000000000000US"
+      },
+      "fundedCents": 0
     },
     {
       "id": "m5",
@@ -284,7 +380,13 @@
           "date": "2026-09-22",
           "totalCents": 13680
         }
-      ]
+      ],
+      "card": {
+        "brand": "Mastercard",
+        "last4": "5516",
+        "srcDigitalCardId": "MVCTM55516000000000000US"
+      },
+      "fundedCents": 0
     }
   ],
   "metrics": {
@@ -365,6 +467,7 @@
   "mode": {
     "demo": false,
     "ledger": "stub",
-    "agent": "local"
+    "agent": "local",
+    "intent": "on"
   }
 }

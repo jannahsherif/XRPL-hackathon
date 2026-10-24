@@ -27,16 +27,22 @@ const history = (typical: number, days: number[]) =>
     totalCents: Math.round(typical * (0.8 + ((i * 37) % 40) / 100)),
   }));
 
+const card = (memberId: string, last4: string) => ({
+  brand: "Mastercard" as const,
+  last4,
+  srcDigitalCardId: `MVCT${memberId.toUpperCase()}${last4}000000000000US`,
+});
+
 export const SEED_MEMBERS: Member[] = [
-  { id: "m1", name: "Eleanor Vance", tier: "founder", allowance: "1000.00", typicalSpendCents: 42000, history: history(42000, [3, 10, 17, 24]) },
-  { id: "m2", name: "Marcus Hale", tier: "premier", allowance: "600.00", typicalSpendCents: 18000, history: history(18000, [5, 12, 26]) },
-  { id: "m3", name: "Priya Raman", tier: "premier", allowance: "600.00", typicalSpendCents: 15500, history: history(15500, [2, 9, 16, 30]) },
-  { id: "m4", name: "Theo Laurent", tier: "standard", allowance: "300.00", typicalSpendCents: 9000, history: history(9000, [7, 21]) },
+  { id: "m1", name: "Eleanor Vance", tier: "founder", allowance: "1000.00", typicalSpendCents: 42000, history: history(42000, [3, 10, 17, 24]), card: card("m1", "5100"), fundedCents: 0 },
+  { id: "m2", name: "Marcus Hale", tier: "premier", allowance: "600.00", typicalSpendCents: 18000, history: history(18000, [5, 12, 26]), card: card("m2", "5204"), fundedCents: 0 },
+  { id: "m3", name: "Priya Raman", tier: "premier", allowance: "600.00", typicalSpendCents: 15500, history: history(15500, [2, 9, 16, 30]), card: card("m3", "5308"), fundedCents: 0 },
+  { id: "m4", name: "Theo Laurent", tier: "standard", allowance: "300.00", typicalSpendCents: 9000, history: history(9000, [7, 21]), card: card("m4", "5412"), fundedCents: 0 },
   // Low-spend member for the anomaly demo: a $900 bottle is >3x typical, so the agent holds it.
-  { id: "m5", name: "Jordan Pike", tier: "founder", allowance: "1000.00", typicalSpendCents: 12000, history: history(12000, [4, 18, 32]) },
+  { id: "m5", name: "Jordan Pike", tier: "founder", allowance: "1000.00", typicalSpendCents: 12000, history: history(12000, [4, 18, 32]), card: card("m5", "5516"), fundedCents: 0 },
 ];
 
-type SeedTab = Omit<Tab, "memberName" | "allowance" | "escrow" | "settlement" | "hold" | "graceEndsAt" | "totalCents" | "tipCents"> & {
+type SeedTab = Omit<Tab, "memberName" | "allowance" | "escrow" | "settlement" | "hold" | "graceEndsAt" | "totalCents" | "tipCents" | "mandate" | "ap4m"> & {
   minutesAgo: number;
 };
 

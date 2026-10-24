@@ -34,7 +34,7 @@ describe("seed and snapshot", () => {
     expect(state.members).toHaveLength(5);
     expect(state.menu.length).toBeGreaterThan(5);
     expect(state.policy.graceSeconds).toBe(10);
-    expect(state.mode).toEqual({ demo: true, ledger: "stub", agent: "local" });
+    expect(state.mode).toEqual({ demo: true, ledger: "stub", agent: "local", intent: "off" });
     expect(state.metrics).toEqual({ outstandingCents: 34_218_000, openTabs: 6, settledCount: 0, avgSettleMs: 0 });
   });
 

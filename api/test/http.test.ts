@@ -6,8 +6,9 @@ import { fakeLedger, fixedAgent, testConfig } from "./helpers.js";
 type Built = Awaited<ReturnType<typeof buildApp>>;
 let built: Built;
 
+// Frozen contract fields plus the two additive Mastercard fields (mandate, ap4m).
 const TAB_KEYS = [
-  "allowance", "escrow", "graceEndsAt", "hold", "id", "items", "memberId", "memberName",
+  "allowance", "ap4m", "escrow", "graceEndsAt", "hold", "id", "items", "mandate", "memberId", "memberName",
   "openedAt", "seat", "settlement", "status", "tipCents", "totalCents",
 ].sort();
 

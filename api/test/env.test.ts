@@ -23,6 +23,13 @@ describe("expandLedgerEnv", () => {
     expect(env.VENUE_SEED).toBe("local");
   });
 
+  it("expands the AP4M key secret from its own variable", () => {
+    const env: NodeJS.ProcessEnv = { AP4M_ENV_JSON: JSON.stringify({ AP4M_TEAM_NAME: "Settle", AP4M_AGENT_PRIVATE_KEY: "0xabc" }) };
+    expect(expandLedgerEnv(env, "AP4M_ENV_JSON").sort()).toEqual(["AP4M_AGENT_PRIVATE_KEY", "AP4M_TEAM_NAME"]);
+    expect(env.AP4M_ENV_JSON).toBeUndefined();
+    expect(() => expandLedgerEnv({ AP4M_ENV_JSON: "x" }, "AP4M_ENV_JSON")).toThrow(/AP4M_ENV_JSON is not valid JSON/);
+  });
+
   it.each(["not json", "[1,2]", "null", '"string"'])("rejects %j", (raw) => {
     expect(() => expandLedgerEnv({ LEDGER_ENV_JSON: raw })).toThrow(/LEDGER_ENV_JSON/);
   });

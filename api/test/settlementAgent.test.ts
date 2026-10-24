@@ -37,6 +37,8 @@ const tab = (overrides: Partial<Tab> = {}): Tab => ({
   hold: null,
   graceEndsAt: null,
   openedAt: "",
+  mandate: null,
+  ap4m: null,
   ...overrides,
 });
 

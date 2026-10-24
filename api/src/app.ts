@@ -4,7 +4,13 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { createSettlementAgent, type SettlementAgent } from "./agent/settlementAgent.js";
 import type { Config } from "./config.js";
 import { EventBus } from "./events.js";
+import { Wallet } from "ethers";
+
+import { AP4M_CONTRACTS, AP4M_NETWORK } from "./ap4m/network.js";
+import { encodePaymentSignature } from "./ap4m/x402.js";
 import { loadLedger } from "./ledger/index.js";
+import { buildMastercardStack } from "./mastercard.js";
+import { verifyPaymentRecord, type PaymentRecord } from "./intent/mandate.js";
 import { SettleService } from "./settleService.js";
 import type { Ledger } from "./types.js";
 
@@ -16,10 +22,11 @@ export interface AppDeps {
 type IdParams = { Params: { id: string } };
 
 export async function buildApp(config: Config, deps: AppDeps = {}) {
-  const ledger = deps.ledger ?? (await loadLedger(config));
-  const agent = deps.agent ?? createSettlementAgent(config);
   const bus = new EventBus();
-  const service = new SettleService(ledger, agent, bus, config);
+  const mastercard = buildMastercardStack(config, (type, data) => bus.publish(type, data));
+  const ledger = deps.ledger ?? mastercard.ap4m ?? (await loadLedger(config));
+  const agent = deps.agent ?? createSettlementAgent(config);
+  const service = new SettleService(ledger, agent, bus, config, { intent: mastercard.intent });
 
   const app: FastifyInstance = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
   await app.register(cors, { origin: config.corsOrigin === "*" ? true : config.corsOrigin.split(",") });
@@ -66,6 +73,101 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
   app.get("/policy", async () => service.snapshot().policy);
   app.patch<{ Body: Record<string, unknown> }>("/policy", async (req) => service.updatePolicy(req.body ?? {}));
 
+  // Mastercard: card funding (SIMULATED rail) -----------------------------------
+  app.post<IdParams & { Body: { amountCents?: number } }>("/members/:id/fund", async (req, reply) => {
+    if (req.body?.amountCents === undefined) return reply.status(400).send({ error: "amountCents is required" });
+    return reply.status(201).send(service.fundMember(req.params.id, Number(req.body.amountCents)));
+  });
+
+  // Mastercard: Verifiable Intent ------------------------------------------------
+  app.get<IdParams>("/intent/tabs/:id", async (req, reply) => {
+    const tab = service.getTab(req.params.id);
+    if (!service.intent || !tab.mandate) return reply.status(404).send({ error: "No Verifiable Intent mandate for this tab" });
+    return {
+      mandate: tab.mandate,
+      jws: service.intent.getJws(tab.mandate.hash),
+      memberKey: service.intent.publicJwk(tab.memberId),
+      verify: "ES256 JWS over the mandate payload with the member's P-256 key (memberKey)",
+    };
+  });
+
+  app.post<{ Body: { record?: PaymentRecord } }>("/intent/verify-payment-record", async (req, reply) => {
+    if (!req.body?.record) return reply.status(400).send({ error: "record is required" });
+    return { valid: verifyPaymentRecord(req.body.record) };
+  });
+
+  // Mastercard AP4M: x402 resource (venue = Merchant / payee facilitator) -------------
+  app.get<IdParams>("/x402/tabs/:id/resource", async (req, reply) => {
+    if (!mastercard.ap4m) return reply.status(404).send({ error: "AP4M is not enabled (LEDGER_MODE=ap4m)" });
+    const header = (name: string) => {
+      const v = req.headers[name];
+      return Array.isArray(v) ? undefined : v;
+    };
+    const out = await mastercard.ap4m.merchant.handle({
+      tabId: req.params.id,
+      channelId: header("x-ap4m-channel-id"),
+      paymentSignature: header("payment-signature"),
+    });
+    reply.header("cache-control", "no-store, private").header("vary", "PAYMENT-SIGNATURE, X-AP4M-CHANNEL-ID");
+    for (const [k, v] of Object.entries(out.headers)) reply.header(k, v);
+    return reply.status(out.status).send(out.body);
+  });
+
+  app.get("/ap4m", async (_req, reply) => {
+    if (!mastercard.ap4m) return reply.status(404).send({ error: "AP4M is not enabled (LEDGER_MODE=ap4m)" });
+    const net = mastercard.ap4m.network;
+    const budget = await net.budget();
+    return {
+      mode: net.mode,
+      network: { ...AP4M_NETWORK },
+      contracts: { ...AP4M_CONTRACTS },
+      eip712Domain: net.domain,
+      agent: net.agentAddress(),
+      merchant: net.merchant(),
+      participants: await net.participants(),
+      budget: budget && { depositWei: budget.depositWei.toString(), allocatedWei: budget.allocatedWei.toString(), availableWei: budget.availableWei.toString() },
+      usdPerRlusd: config.usdPerRlusd,
+    };
+  });
+
+  /** Proof: spending past the funded cap is refused by the Agent and by the PaymentLedger. */
+  app.post<IdParams>("/demo/ap4m/over-cap/:id", async (req, reply) => {
+    if (!mastercard.ap4m) return reply.status(404).send({ error: "AP4M is not enabled (LEDGER_MODE=ap4m)" });
+    return mastercard.ap4m.attemptOverCap(service.getTab(req.params.id));
+  });
+
+  /** Proof: a Voucher from an agent that is not the Channel's KYA-registered Agent is refused. */
+  app.post<IdParams>("/demo/ap4m/unverified-agent/:id", async (req, reply) => {
+    if (!mastercard.ap4m) return reply.status(404).send({ error: "AP4M is not enabled (LEDGER_MODE=ap4m)" });
+    const tab = service.getTab(req.params.id);
+    if (!tab.ap4m) return reply.status(409).send({ error: "Tab has no AP4M Channel" });
+    const net = mastercard.ap4m.network;
+    const invoice = mastercard.ap4m.merchant.createInvoice({
+      tabId: `${tab.id}-impostor`,
+      invoiceId: `IMPOSTOR-${tab.id}`,
+      channelId: tab.ap4m.channelId,
+      amountWei: 1n,
+      resourceUrl: `${config.publicBaseUrl}/x402/tabs/${tab.id}-impostor/resource`,
+      content: { note: "impostor probe" },
+    });
+    const required = await mastercard.ap4m.merchant.requirement(invoice);
+    const channel = await net.getChannel(tab.ap4m.channelId);
+    const voucher = { channelId: tab.ap4m.channelId, cumulativeAmount: channel.redeemedWei + 1n };
+    const impostor = Wallet.createRandom();
+    const signature = await impostor.signTypedData(net.domain, { Voucher: [{ name: "channelId", type: "bytes32" }, { name: "cumulativeAmount", type: "uint256" }] }, voucher);
+    const out = await mastercard.ap4m.merchant.handle({
+      tabId: invoice.tabId,
+      channelId: tab.ap4m.channelId,
+      paymentSignature: encodePaymentSignature({
+        x402Version: 2,
+        accepted: required.accepts[0],
+        payload: { voucher: { channelId: voucher.channelId, cumulativeAmount: voucher.cumulativeAmount.toString() }, agentSignature: signature },
+      }),
+    });
+    bus.publish("ap4m.rejected", { tabId: tab.id, probe: "unverified-agent", impostor: impostor.address, status: out.status, body: out.body });
+    return { impostor: impostor.address, merchantStatus: out.status, merchantResponse: out.body };
+  });
+
   app.post("/demo/reset", async () => {
     await service.reset();
     return service.snapshot();
@@ -93,11 +195,17 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
     reply.hijack();
   });
 
-  if (config.ledgerMode === "module" && config.seedLiveEscrows) {
+  // The Agent reaches the venue's x402 endpoint in-process (same HTTP routing, no network hop).
+  mastercard.ap4m?.setFetch(async (url, headers) => {
+    const res = await app.inject({ method: "GET", url: new URL(url).pathname, headers });
+    return { status: res.statusCode, header: (name) => res.headers[name.toLowerCase()] as string | undefined, body: res.json() };
+  });
+
+  if ((config.ledgerMode === "module" || config.ledgerMode === "ap4m") && config.seedLiveEscrows) {
     void service.openSeedEscrows();
   }
 
-  return { app, service, bus };
+  return { app, service, bus, mastercard };
 }
 
 function corsHeaders(origin: string | undefined, allowed: string): Record<string, string> {

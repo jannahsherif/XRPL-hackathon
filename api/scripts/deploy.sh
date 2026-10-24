@@ -15,6 +15,8 @@ MODEL_ID="${MODEL_ID:-anthropic.claude-opus-5-5}"
 LEDGER_MODE="${LEDGER_MODE:-stub}"
 DEMO="${DEMO:-1}"
 CORS_ORIGIN="${CORS_ORIGIN:-*}"
+AP4M_NETWORK="${AP4M_NETWORK:-simulated}"
+INTENT_MODE="${INTENT_MODE:-on}"
 VERSION="${VERSION:-$(git rev-parse --short=12 HEAD)-$(date +%s)}"
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 REPO_URI="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/settle-api"
@@ -45,7 +47,7 @@ aws cloudformation deploy \
   --template-file infra/api.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
   --no-fail-on-empty-changeset \
-  --parameter-overrides Stage="$STAGE" ImageUri="${REPO_URI}:${VERSION}" Demo="$DEMO" LedgerMode="$LEDGER_MODE" CorsOrigin="$CORS_ORIGIN"
+  --parameter-overrides Stage="$STAGE" ImageUri="${REPO_URI}:${VERSION}" Demo="$DEMO" LedgerMode="$LEDGER_MODE" CorsOrigin="$CORS_ORIGIN" Ap4mNetwork="$AP4M_NETWORK" IntentMode="$INTENT_MODE"
 
 API_URL="$(aws cloudformation describe-stacks --region "$REGION" --stack-name "settle-${STAGE}-api" \
   --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)"

@@ -3,6 +3,7 @@ import { config } from "./config.js";
 import { expandLedgerEnv } from "./env.js";
 
 expandLedgerEnv(process.env);
+expandLedgerEnv(process.env, "AP4M_ENV_JSON");
 
 const { app } = await buildApp(config);
 

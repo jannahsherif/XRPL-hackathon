@@ -164,7 +164,7 @@ describe("HTTP contract", () => {
     expect(body.metrics.outstandingCents).toBe(34218000);
     expect(body.menu.some((m: { priceCents: number }) => m.priceCents === 90000)).toBe(true);
     expect(Object.keys(body.tabs[0]).sort()).toEqual(
-      ["allowance", "escrow", "graceEndsAt", "hold", "id", "items", "memberId", "memberName", "openedAt", "seat", "settlement", "status", "tipCents", "totalCents"].sort(),
+      ["allowance", "ap4m", "escrow", "graceEndsAt", "hold", "id", "items", "mandate", "memberId", "memberName", "openedAt", "seat", "settlement", "status", "tipCents", "totalCents"].sort(),
     );
 
     expect((await app.inject({ method: "POST", url: "/tabs", payload: {} })).statusCode).toBe(400);

@@ -66,6 +66,8 @@ jobs:
       LEDGER_MODE: ${{ vars.LEDGER_MODE || 'stub' }}
       DEMO: ${{ vars.DEMO || '1' }}
       CORS_ORIGIN: ${{ vars.CORS_ORIGIN || '*' }}
+      AP4M_NETWORK: ${{ vars.AP4M_NETWORK || 'simulated' }}
+      INTENT_MODE: ${{ vars.INTENT_MODE || 'on' }}
       # The release tag (e.g. v0.2.0) names the agent zip and the image.
       VERSION: ${{ github.event.release.tag_name }}
     steps:
@@ -121,7 +123,7 @@ jobs:
             --template-file infra/api.yaml \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset \
-            --parameter-overrides Stage="$STAGE" ImageUri="$IMAGE" Demo="$DEMO" LedgerMode="$LEDGER_MODE" CorsOrigin="$CORS_ORIGIN"
+            --parameter-overrides Stage="$STAGE" ImageUri="$IMAGE" Demo="$DEMO" LedgerMode="$LEDGER_MODE" CorsOrigin="$CORS_ORIGIN" Ap4mNetwork="$AP4M_NETWORK" IntentMode="$INTENT_MODE"
 
       - name: Wait for the service and smoke test
         run: |

@@ -11,6 +11,8 @@ const member = (overrides: Partial<Member> = {}): Member => ({
   allowance: "1000.00",
   typicalSpendCents: 12000,
   history: [],
+  card: { brand: "Mastercard", last4: "0000", srcDigitalCardId: "MVCT" },
+  fundedCents: 0,
   ...overrides,
 });
 
@@ -29,6 +31,8 @@ const tab = (items: Tab["items"], overrides: Partial<Tab> = {}): Tab => ({
   hold: null,
   graceEndsAt: null,
   openedAt: new Date().toISOString(),
+  mandate: null,
+  ap4m: null,
   ...overrides,
 });
 
