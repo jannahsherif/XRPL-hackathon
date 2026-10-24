@@ -9,17 +9,28 @@ outside `ledger/` touches a private key.
 ```bash
 cd ledger && npm install
 
-npm run setup:accounts   # faucet-funds issuer, venue, member-1..4; seeds -> .env (gitignored), addresses -> accounts.json
-                         # refuses to overwrite an existing .env (pass -- --force to replace it)
-npm run setup:token      # issues TUSD, opens trust lines, seeds members. Idempotent
+npm run setup:accounts   # faucet-funds issuer, venue, member-1..5; seeds -> .env (gitignored), addresses -> accounts.json
+                         # creates only accounts missing from .env and appends their seeds; existing keys are never
+                         # rewritten (pass -- --force to replace every account)
+npm run setup:token      # issues TUSD, opens trust lines, sets balances to SEED_BALANCES. Idempotent
 npm run check:rlusd      # does the testnet RLUSD issuer allow trust-line locking? (prints yes/no)
 
-npm run demo:reset       # closes every open tab escrow, members back to 1000/200/400/200 TUSD, venue to 0
+npm run demo:reset       # closes every open tab escrow, then sets every balance back to SEED_BALANCES
 npm run demo:happy-path  # openTab -> wait for FinishAfter -> settleTab, prints hashes, amounts, timings
 
-npm test                 # amount math (decimal strings, no floats)
+npm test                 # amount math, runtime keys, escrowSeq validation (no network)
 npm run typecheck
 ```
+
+`SEED_BALANCES` in `src/config.ts` is the one place balances are set, sized to cover the API's
+allowances with headroom (member-1 has two seeded tabs, 4,500 together):
+
+| account | venue | member-1 | member-2 | member-3 | member-4 | member-5 |
+|---|---|---|---|---|---|---|
+| TUSD | 0 | 5000 | 800 | 800 | 500 | 1200 |
+
+To add a member, append its ID to `MEMBER_IDS` and `SEED_BALANCES`, then run `setup:accounts` and
+`setup:token`.
 
 Every transaction is logged as one line: `[ledger] <TransactionType> <hash> <result> ledger=<index>`.
 
@@ -41,13 +52,16 @@ The top-level functions share one instance configured from `ledger/.env`. `creat
 builds your own; every field is optional: `wsUrl`, `token`, `envPath`, `accountsPath`,
 `explorerBase`, `finishAfterSeconds` (5), `cancelAfterSeconds` (8h), `useBatch` (true),
 `ledgerOffset`, `timeoutMs`, `log`. Seeds are never passed in. They're read from `ledger/.env`, or
-from the environment when there's no file: `ISSUER_SEED`, `VENUE_SEED`, `MEMBER_1_SEED` …
-`MEMBER_4_SEED`, optional `XRPL_WS_URL`. Addresses come from the committed `accounts.json`.
+from the environment when there's no file. Addresses come from the committed `accounts.json`.
+
+The module only needs `VENUE_SEED` and `MEMBER_1_SEED` … `MEMBER_5_SEED`. `ISSUER_SEED` is for
+`setup:token` and `demo:reset`; don't deploy it. `XRPL_WS_URL` is optional and resolves from the
+process environment first, then `ledger/.env`, then public testnet.
 
 It's plain TypeScript with `.ts` imports, so it runs under `tsx` or Node ≥ 22.18 (built-in type stripping).
 `xrpl` resolves from `ledger/node_modules`, so run `npm install` (or `npm ci --omit=dev`) here.
 
-Member IDs are `member-1` … `member-4`. Amounts are decimal strings in token units (`"86.40"`).
+Member IDs are `member-1` … `member-5`. Amounts are decimal strings in token units (`"86.40"`).
 Times are ISO 8601 strings.
 
 ### `openTab({ memberId, allowance })`
@@ -63,7 +77,8 @@ Escrows `allowance` from the member to the venue. `FinishAfter` = now + 5 s, `Ca
 
 ### `settleTab({ tab, amount, tipAmount })`
 
-`tab` needs only `{ memberId, escrowSeq }` (the openTab result plus `memberId` works). `amount` is
+`tab` needs only `{ memberId, escrowSeq }` (the openTab result plus `memberId` works); `escrowSeq`
+must be a positive integer (a numeric string is accepted). `amount` is
 the spend *excluding* the tip. The allowance is read from the escrow on the ledger. The venue
 finishes the escrow and refunds `allowance − amount − tipAmount` in one all-or-nothing Batch; if the
 Batch fails for any reason it falls back to EscrowFinish then Payment, each waited on until validated.
@@ -88,7 +103,7 @@ EscrowCancel (`via: 'EscrowCancel'`) or the refund Payment (`via: 'refund'`).
 
 ### `getBalances()`
 
-`{ venue, members: { 'member-1': '1000', … } }`: trust-line balances on the last validated ledger.
+`{ venue, members: { 'member-1': '5000', … } }`: trust-line balances on the last validated ledger.
 Tokens locked in open tabs are not included.
 
 ### `explorerUrl(hash)`
@@ -106,7 +121,7 @@ a plain `Error` without a `code`.
 | `INSUFFICIENT_FUNDS` | member can't cover the allowance, or `amount + tipAmount` exceeds it |
 | `ESCROW_NOT_FOUND` | no open escrow for that `memberId` + `escrowSeq` (already settled/cancelled) |
 | `LEDGER_TIMEOUT` | not validated before `LastLedgerSequence` (~35–45 s), or no connection |
-| `INVALID_INPUT` | unknown `memberId`, or an amount that isn't a plain decimal string |
+| `INVALID_INPUT` | unknown `memberId`, an `escrowSeq` that isn't a positive integer, or an amount that isn't a plain decimal string |
 | `LEDGER_REJECTED` | any other ledger failure, including settling an expired escrow (use `cancelTab`) |
 
 ## Timing
