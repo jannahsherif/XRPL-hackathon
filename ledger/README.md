@@ -1,0 +1,119 @@
+# ledger
+
+Settle's XRPL layer. Puts real transactions on XRPL Testnet: a tab opens as a token escrow from the
+member to the venue, and settling finishes that escrow and refunds what wasn't spent. Nothing
+outside `ledger/` touches a private key.
+
+## Run it
+
+```bash
+cd ledger && npm install
+
+npm run setup:accounts   # faucet-funds issuer, venue, member-1..4; seeds -> .env (gitignored), addresses -> accounts.json
+                         # refuses to overwrite an existing .env (pass -- --force to replace it)
+npm run setup:token      # issues TUSD, opens trust lines, seeds members. Idempotent
+npm run check:rlusd      # does the testnet RLUSD issuer allow trust-line locking? (prints yes/no)
+
+npm run demo:reset       # closes every open tab escrow, members back to 1000/200/400/200 TUSD, venue to 0
+npm run demo:happy-path  # openTab -> wait for FinishAfter -> settleTab, prints hashes, amounts, timings
+
+npm test                 # amount math (decimal strings, no floats)
+npm run typecheck
+```
+
+Every transaction is logged as one line: `[ledger] <TransactionType> <hash> <result> ledger=<index>`.
+
+## Why TUSD, not RLUSD
+
+Token escrow (TokenEscrow / XLS-85, enabled on testnet) only works for trust-line tokens whose issuer
+has the **Allow Trust Line Locking** flag (`lsfAllowTrustLineLocking`). The testnet RLUSD issuer
+`rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV` does not have it (checked 2026-10-24; `npm run check:rlusd`
+re-checks). So we issue our own `TUSD` from our issuer with that flag (and Default Ripple) set.
+The token is one value, `TOKEN` in `src/config.ts`; set it to `'RLUSD'` if the flag is ever enabled.
+
+## Using it from api/
+
+```ts
+import { openTab, settleTab, cancelTab, getBalances, explorerUrl, createLedger } from '../ledger/src/index.ts'
+```
+
+The top-level functions share one instance configured from `ledger/.env`. `createLedger(config)`
+builds your own; every field is optional: `wsUrl`, `token`, `envPath`, `accountsPath`,
+`explorerBase`, `finishAfterSeconds` (5), `cancelAfterSeconds` (8h), `useBatch` (true),
+`ledgerOffset`, `timeoutMs`, `log`. Seeds are never passed in. They're read from `ledger/.env`, or
+from the environment when there's no file: `ISSUER_SEED`, `VENUE_SEED`, `MEMBER_1_SEED` …
+`MEMBER_4_SEED`, optional `XRPL_WS_URL`. Addresses come from the committed `accounts.json`.
+
+It's plain TypeScript with `.ts` imports, so it runs under `tsx` or Node ≥ 22.18 (built-in type stripping).
+`xrpl` resolves from `ledger/node_modules`, so run `npm install` (or `npm ci --omit=dev`) here.
+
+Member IDs are `member-1` … `member-4`. Amounts are decimal strings in token units (`"86.40"`).
+Times are ISO 8601 strings.
+
+### `openTab({ memberId, allowance })`
+
+Escrows `allowance` from the member to the venue. `FinishAfter` = now + 5 s, `CancelAfter` = now + 8 h.
+
+| field | |
+|---|---|
+| `escrowSeq` | the escrow's sequence; with `memberId` it identifies the tab |
+| `txHash`, `explorerUrl`, `ledgerIndex` | the validated EscrowCreate |
+| `submittedAt`, `validatedAt` | see Timing |
+| `allowance`, `finishAfter`, `cancelAfter` | what was escrowed and its time window |
+
+### `settleTab({ tab, amount, tipAmount })`
+
+`tab` needs only `{ memberId, escrowSeq }` (the openTab result plus `memberId` works). `amount` is
+the spend *excluding* the tip. The allowance is read from the escrow on the ledger. The venue
+finishes the escrow and refunds `allowance − amount − tipAmount` in one all-or-nothing Batch; if the
+Batch fails for any reason it falls back to EscrowFinish then Payment, each waited on until validated.
+If called before FinishAfter has passed on a validated ledger, it waits (not counted in `elapsedMs`).
+
+| field | |
+|---|---|
+| `finishTxHash` | the EscrowFinish |
+| `refundTxHash` | the refund Payment; `null` when nothing is left to refund |
+| `toVenue`, `toMember` | `amount + tipAmount`, and the refund |
+| `elapsedMs` | `validatedAt − submittedAt` |
+| `submittedAt`, `validatedAt` | see Timing |
+| `explorerUrls` | finish, refund (if any), Batch (if batched) |
+| `mode` | `'batch'` or `'sequential'` |
+| `batchTxHash` | the outer Batch, when `mode` is `'batch'` |
+
+### `cancelTab({ tab })`
+
+Closes a tab with nothing spent. Past `CancelAfter`, an EscrowCancel; before that, the venue finishes
+the escrow and refunds it in full. Returns `{ txHash, explorerUrl, via }`; `txHash` is the
+EscrowCancel (`via: 'EscrowCancel'`) or the refund Payment (`via: 'refund'`).
+
+### `getBalances()`
+
+`{ venue, members: { 'member-1': '1000', … } }`: trust-line balances on the last validated ledger.
+Tokens locked in open tabs are not included.
+
+### `explorerUrl(hash)`
+
+`https://testnet.xrpl.org/transactions/<hash>`.
+
+## Errors
+
+Failures are thrown as `LedgerError` with a `code` (and `result`, the XRPL result code, when the
+ledger returned one). An unexpected client error, such as a malformed request, can still surface as
+a plain `Error` without a `code`.
+
+| code | when |
+|---|---|
+| `INSUFFICIENT_FUNDS` | member can't cover the allowance, or `amount + tipAmount` exceeds it |
+| `ESCROW_NOT_FOUND` | no open escrow for that `memberId` + `escrowSeq` (already settled/cancelled) |
+| `LEDGER_TIMEOUT` | not validated before `LastLedgerSequence` (~35–45 s), or no connection |
+| `INVALID_INPUT` | unknown `memberId`, or an amount that isn't a plain decimal string |
+| `LEDGER_REJECTED` | any other ledger failure, including settling an expired escrow (use `cancelTab`) |
+
+## Timing
+
+`submittedAt` is taken just before the first `submit` request; `validatedAt` is when the server
+announced the validated ledger holding the last transaction (we listen on the ledger stream).
+`elapsedMs` is measured to that **validated** ledger, not to a closed or proposed one. On testnet
+that's typically 3.5–7 s: ledgers validate every ~3.3 s and a new transaction usually lands two
+ledgers past the last validated one. Ledger close times have 10 s resolution, so an escrow can
+become finishable up to ~10 s after its `FinishAfter`.
