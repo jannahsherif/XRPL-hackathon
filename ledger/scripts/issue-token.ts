@@ -59,9 +59,9 @@ try {
     }),
   )
 
-  // Every top-up is an issuer payment, so these run one at a time on the issuer's sequence.
-  for (const id of MEMBER_IDS) {
-    await setBalance(conn, opts, issuer, wallets.get(id)!, token, SEED_BALANCES[id])
+  // Top-ups are issuer payments, so these run one at a time on the issuer's sequence.
+  for (const [role, balance] of Object.entries(SEED_BALANCES)) {
+    await setBalance(conn, opts, issuer, wallets.get(role)!, token, balance)
   }
 
   for (const role of ['venue', ...MEMBER_IDS]) {
