@@ -3,15 +3,15 @@
 // venue and every member back to SEED_BALANCES. Safe to re-run.
 import type { LedgerEntry } from 'xrpl'
 import { setBalance } from '../src/admin.ts'
-import { MEMBER_IDS, SEED_BALANCES, SUBMIT_DEFAULTS, TESTNET } from '../src/config.ts'
+import { MEMBER_IDS, SEED_BALANCES, SUBMIT_DEFAULTS } from '../src/config.ts'
 import { createLedger } from '../src/index.ts'
-import { loadAccounts, loadEnv, loadWallets } from '../src/keys.ts'
+import { loadAccounts, loadWallets, wsUrl } from '../src/keys.ts'
 import { connect } from '../src/submit.ts'
 
 const accounts = loadAccounts()
 const wallets = loadWallets(accounts)
 const ledger = createLedger()
-const conn = connect(loadEnv().XRPL_WS_URL ?? TESTNET.wsUrl)
+const conn = connect(wsUrl())
 let failures = 0
 
 try {

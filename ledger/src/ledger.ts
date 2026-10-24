@@ -4,7 +4,7 @@ import { trustLineBalance } from './admin.ts'
 import { assertAmount, isZero, refundFor, sub } from './amounts.ts'
 import { SUBMIT_DEFAULTS, TAB_DEFAULTS, TESTNET, TOKEN, type TokenName, resolveToken } from './config.ts'
 import { LedgerError } from './errors.ts'
-import { RUNTIME_ROLES, loadAccounts, loadEnv, loadWallets, memberAddress } from './keys.ts'
+import { RUNTIME_ROLES, loadAccounts, loadWallets, memberAddress, wsUrl } from './keys.ts'
 import { type SubmitOptions, type Submitted, connect, submitTx } from './submit.ts'
 
 // Everything here is optional; seeds are never passed in, they stay in ledger/.env.
@@ -76,7 +76,7 @@ export function createLedger(config: LedgerConfig = {}) {
   const wallets = loadWallets(accounts, config.envPath, RUNTIME_ROLES)
   const token = resolveToken(config.token ?? TOKEN, accounts)
   const explorerBase = config.explorerBase ?? TESTNET.explorerBase
-  const conn = connect(config.wsUrl ?? loadEnv(config.envPath).XRPL_WS_URL ?? TESTNET.wsUrl)
+  const conn = connect(config.wsUrl ?? wsUrl(config.envPath))
   const opts: SubmitOptions = {
     ledgerOffset: config.ledgerOffset ?? SUBMIT_DEFAULTS.ledgerOffset,
     timeoutMs: config.timeoutMs ?? SUBMIT_DEFAULTS.timeoutMs,
@@ -130,25 +130,26 @@ export function createLedger(config: LedgerConfig = {}) {
   // token from the member to our venue count as tabs.
   async function getTabEscrow(tab: Tab) {
     const owner = memberAddress(accounts, tab.memberId)
+    const escrowSeq = parseEscrowSeq(tab.escrowSeq)
     const client = await conn.ready()
     let escrow: LedgerEntry.Escrow
     try {
       const { result } = await client.request({
         command: 'ledger_entry',
-        escrow: { owner, seq: tab.escrowSeq },
+        escrow: { owner, seq: escrowSeq },
         ledger_index: 'validated',
       })
       escrow = result.node as LedgerEntry.Escrow
     } catch (error) {
       if ((error as { data?: { error?: string } }).data?.error !== 'entryNotFound') throw error
-      throw new LedgerError('ESCROW_NOT_FOUND', `no open escrow ${tab.escrowSeq} for ${tab.memberId}: already settled, cancelled, or never created`)
+      throw new LedgerError('ESCROW_NOT_FOUND', `no open escrow ${escrowSeq} for ${tab.memberId}: already settled, cancelled, or never created`)
     }
     // xrpl.js types Escrow.Amount as XRP drops; token escrows hold an issued-currency object.
     const amount = escrow.Amount as unknown as IssuedCurrencyAmount
     if (escrow.Destination !== venue.address || amount.currency !== token.currency || amount.issuer !== token.issuer) {
-      throw new LedgerError('ESCROW_NOT_FOUND', `escrow ${tab.escrowSeq} for ${tab.memberId} is not a ${token.name} tab with this venue`)
+      throw new LedgerError('ESCROW_NOT_FOUND', `escrow ${escrowSeq} for ${tab.memberId} is not a ${token.name} tab with this venue`)
     }
-    return { owner, allowance: amount.value, finishAfter: escrow.FinishAfter ?? 0, cancelAfter: escrow.CancelAfter ?? 0 }
+    return { owner, escrowSeq, allowance: amount.value, finishAfter: escrow.FinishAfter ?? 0, cancelAfter: escrow.CancelAfter ?? 0 }
   }
 
   async function validatedCloseTime(): Promise<number> {
@@ -182,7 +183,7 @@ export function createLedger(config: LedgerConfig = {}) {
     const toMember = refundFor(escrow.allowance, amount, tipAmount)
     const toVenue = sub(escrow.allowance, toMember)
     if ((await validatedCloseTime()) > escrow.cancelAfter) {
-      throw new LedgerError('LEDGER_REJECTED', `escrow ${tab.escrowSeq} expired at ${rippleTimeToISOTime(escrow.cancelAfter)}; cancelTab returns it to the member`)
+      throw new LedgerError('LEDGER_REJECTED', `escrow ${escrow.escrowSeq} expired at ${rippleTimeToISOTime(escrow.cancelAfter)}; cancelTab returns it to the member`)
     }
     await waitForCloseAfter(escrow.finishAfter)
 
@@ -190,7 +191,7 @@ export function createLedger(config: LedgerConfig = {}) {
       TransactionType: 'EscrowFinish',
       Account: venue.address,
       Owner: escrow.owner,
-      OfferSequence: tab.escrowSeq,
+      OfferSequence: escrow.escrowSeq,
     }
     const refund: Payment | null = isZero(toMember)
       ? null
@@ -275,7 +276,7 @@ export function createLedger(config: LedgerConfig = {}) {
     if ((await validatedCloseTime()) > escrow.cancelAfter) {
       const { tx } = await submitTx(
         conn,
-        { TransactionType: 'EscrowCancel', Account: venue.address, Owner: escrow.owner, OfferSequence: tab.escrowSeq },
+        { TransactionType: 'EscrowCancel', Account: venue.address, Owner: escrow.owner, OfferSequence: escrow.escrowSeq },
         venue,
         opts,
       )
@@ -310,6 +311,15 @@ export function createLedger(config: LedgerConfig = {}) {
 }
 
 export type Ledger = ReturnType<typeof createLedger>
+
+// Escrow sequences are positive integers. A tab that went through JSON may carry one as a string.
+function parseEscrowSeq(value: unknown): number {
+  const seq = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value
+  if (typeof seq !== 'number' || !Number.isSafeInteger(seq) || seq <= 0) {
+    throw new LedgerError('INVALID_INPUT', `escrowSeq must be a positive integer, got ${JSON.stringify(value)}`)
+  }
+  return seq
+}
 
 function describe(error: unknown): string {
   if (error instanceof LedgerError) return [error.code, error.result].filter(Boolean).join(' ')

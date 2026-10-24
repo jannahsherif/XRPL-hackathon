@@ -3,7 +3,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { parseEnv } from 'node:util'
 import { Wallet } from 'xrpl'
-import { MEMBER_IDS, paths, seedEnvKey } from './config.ts'
+import { MEMBER_IDS, TESTNET, paths, seedEnvKey } from './config.ts'
 import { LedgerError } from './errors.ts'
 
 export type Accounts = {
@@ -19,6 +19,11 @@ export function loadAccounts(path = paths.accounts): Accounts {
 
 export function loadEnv(path = paths.env): Record<string, string | undefined> {
   return existsSync(path) ? parseEnv(readFileSync(path, 'utf8')) : {}
+}
+
+// The process environment wins (that's how a deployment overrides it), then ledger/.env, then testnet.
+export function wsUrl(envPath = paths.env): string {
+  return process.env.XRPL_WS_URL || loadEnv(envPath).XRPL_WS_URL || TESTNET.wsUrl
 }
 
 // Tabs only ever sign as the venue or a member. The issuer key is for setup:token and demo:reset,
