@@ -4,7 +4,7 @@ import { trustLineBalance } from './admin.ts'
 import { assertAmount, isZero, refundFor, sub } from './amounts.ts'
 import { SUBMIT_DEFAULTS, TAB_DEFAULTS, TESTNET, TOKEN, type TokenName, resolveToken } from './config.ts'
 import { LedgerError } from './errors.ts'
-import { loadAccounts, loadEnv, loadWallets, memberAddress } from './keys.ts'
+import { RUNTIME_ROLES, loadAccounts, loadEnv, loadWallets, memberAddress } from './keys.ts'
 import { type SubmitOptions, type Submitted, connect, submitTx } from './submit.ts'
 
 // Everything here is optional; seeds are never passed in, they stay in ledger/.env.
@@ -73,7 +73,7 @@ const iso = (epochMs: number) => new Date(epochMs).toISOString()
 
 export function createLedger(config: LedgerConfig = {}) {
   const accounts = loadAccounts(config.accountsPath)
-  const wallets = loadWallets(accounts, config.envPath)
+  const wallets = loadWallets(accounts, config.envPath, RUNTIME_ROLES)
   const token = resolveToken(config.token ?? TOKEN, accounts)
   const explorerBase = config.explorerBase ?? TESTNET.explorerBase
   const conn = connect(config.wsUrl ?? loadEnv(config.envPath).XRPL_WS_URL ?? TESTNET.wsUrl)

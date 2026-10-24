@@ -21,11 +21,16 @@ export function loadEnv(path = paths.env): Record<string, string | undefined> {
   return existsSync(path) ? parseEnv(readFileSync(path, 'utf8')) : {}
 }
 
-export function loadWallets(accounts: Accounts, envPath = paths.env): Map<string, Wallet> {
+// Tabs only ever sign as the venue or a member. The issuer key is for setup:token and demo:reset,
+// so the runtime never asks for it and it never has to be deployed.
+export const RUNTIME_ROLES = ['venue', ...MEMBER_IDS]
+export const ALL_ROLES = ['issuer', ...RUNTIME_ROLES]
+
+export function loadWallets(accounts: Accounts, envPath = paths.env, roles = ALL_ROLES): Map<string, Wallet> {
   const env = loadEnv(envPath)
   const wallets = new Map<string, Wallet>()
   const expected: Record<string, string> = { issuer: accounts.issuer, venue: accounts.venue, ...accounts.members }
-  for (const role of ['issuer', 'venue', ...MEMBER_IDS]) {
+  for (const role of roles) {
     const seed = env[seedEnvKey(role)] ?? process.env[seedEnvKey(role)]
     if (!seed) throw new Error(`missing ${seedEnvKey(role)} (run npm run setup:accounts, or see .env.example)`)
     const wallet = Wallet.fromSeed(seed)
