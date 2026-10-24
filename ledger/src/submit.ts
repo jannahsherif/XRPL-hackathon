@@ -62,17 +62,20 @@ export async function submitTx(
 ): Promise<Validated> {
   const type = tx.TransactionType
   for (let attempt = 1; ; attempt++) {
-    const client = await conn.ready()
-    // autofill mutates Batch inner transactions, so every attempt starts from a fresh copy. The
-    // placeholder LastLedgerSequence stops autofill fetching its own; ours is set just below.
-    const [validatedLedger, filled] = await Promise.all([
-      client.getLedgerIndex(),
-      client.autofill({ ...structuredClone(tx), LastLedgerSequence: 0 }),
-    ])
-    filled.LastLedgerSequence = validatedLedger + opts.ledgerOffset
-    const { tx_blob, hash } = wallet.sign(filled)
-    onSubmit?.()
-    const preliminary = (await client.request({ command: 'submit', tx_blob })).result.engine_result
+    const { hash, preliminary, lastLedger } = await serialize(tx.Account, async () => {
+      const client = await conn.ready()
+      // autofill mutates Batch inner transactions, so every attempt starts from a fresh copy. The
+      // placeholder LastLedgerSequence stops autofill fetching its own; ours is set just below.
+      const [validatedLedger, filled] = await Promise.all([
+        client.getLedgerIndex(),
+        client.autofill({ ...structuredClone(tx), LastLedgerSequence: 0 }),
+      ])
+      filled.LastLedgerSequence = validatedLedger + opts.ledgerOffset
+      const { tx_blob, hash } = wallet.sign(filled)
+      onSubmit?.()
+      const { result } = await client.request({ command: 'submit', tx_blob })
+      return { hash, preliminary: result.engine_result, lastLedger: filled.LastLedgerSequence }
+    })
 
     if (preliminary === 'tefPAST_SEQ' && attempt === 1) {
       opts.log(`${type} ${hash} ${preliminary} (retrying with a fresh sequence)`)
@@ -83,7 +86,7 @@ export async function submitTx(
       throw errorForResult(preliminary, type)
     }
 
-    const validated = await waitForValidation(conn, hash, filled.LastLedgerSequence!, Date.now() + opts.timeoutMs)
+    const validated = await waitForValidation(conn, hash, lastLedger, Date.now() + opts.timeoutMs)
     if (!validated) {
       // Past LastLedgerSequence, so this hash can never apply and a fresh submit can't double up.
       if (preliminary === 'terQUEUED' && attempt === 1) {
@@ -91,14 +94,24 @@ export async function submitTx(
         continue
       }
       opts.log(`${type} ${hash} expired (preliminary ${preliminary})`)
-      throw new LedgerError('LEDGER_TIMEOUT', `${type} ${hash} was not validated by ledger ${filled.LastLedgerSequence}`, preliminary)
+      throw new LedgerError('LEDGER_TIMEOUT', `${type} ${hash} was not validated by ledger ${lastLedger}`, preliminary)
     }
 
     const code = resultCode(validated)
-    opts.log(`${type} ${hash} ${code}`)
+    opts.log(`${type} ${hash} ${code} ledger=${validated.ledger_index}`)
     if (code !== 'tesSUCCESS') throw errorForResult(code, type)
     return validated
   }
+}
+
+// One account's transactions are prepared and submitted one at a time, so concurrent calls (two
+// tabs settling at once) never autofill the same Sequence. Waiting for validation stays concurrent.
+const accountQueues = new Map<string, Promise<unknown>>()
+
+function serialize<T>(account: string, fn: () => Promise<T>): Promise<T> {
+  const next = (accountQueues.get(account) ?? Promise.resolve()).then(fn, fn)
+  accountQueues.set(account, next.catch(() => {}))
+  return next
 }
 
 // Resolves with the validated tx, or null once the ledger is past lastLedger without it.

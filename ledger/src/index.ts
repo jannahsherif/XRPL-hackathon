@@ -3,7 +3,7 @@
 import { type Ledger, type Tab, createLedger } from './ledger.ts'
 
 export { createLedger, explorerUrl } from './ledger.ts'
-export type { Ledger, LedgerConfig, OpenTabResult, Tab } from './ledger.ts'
+export type { Ledger, LedgerConfig, OpenTabResult, SettleTabResult, Tab } from './ledger.ts'
 export { LedgerError, type LedgerErrorCode } from './errors.ts'
 
 let shared: Ledger | undefined
