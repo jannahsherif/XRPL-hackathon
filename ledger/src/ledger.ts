@@ -1,5 +1,6 @@
 import type { EscrowFinish, IssuedCurrencyAmount, LedgerEntry, Payment } from 'xrpl'
 import { BatchFlags, GlobalFlags, isoTimeToRippleTime, rippleTimeToISOTime } from 'xrpl'
+import { trustLineBalance } from './admin.ts'
 import { assertAmount, isZero, refundFor, sub } from './amounts.ts'
 import { SUBMIT_DEFAULTS, TAB_DEFAULTS, TESTNET, TOKEN, type TokenName, resolveToken } from './config.ts'
 import { LedgerError } from './errors.ts'
@@ -267,14 +268,21 @@ export function createLedger(config: LedgerConfig = {}) {
     }
   }
 
-  // L5: close a tab with nothing spent. An expired escrow (past CancelAfter) can only be cancelled,
-  // which returns it to the member; before that, the venue finishes it and refunds it in full.
+
   async function cancelTab(_args: { tab: Tab }): Promise<CancelTabResult> {
     throw new Error('cancelTab lands in L5')
   }
 
+  // L6: trust-line balances in the tab token. Tokens locked in open tabs are not included.
   async function getBalances(): Promise<Balances> {
-    throw new Error('getBalances lands in L6')
+    const client = await conn.ready()
+    const balanceOf = async (address: string) => (await trustLineBalance(client, address, token)) ?? '0'
+    const ids = Object.keys(accounts.members)
+    const [venueBalance, ...memberBalances] = await Promise.all([
+      balanceOf(venue.address),
+      ...ids.map((id) => balanceOf(accounts.members[id])),
+    ])
+    return { venue: venueBalance, members: Object.fromEntries(ids.map((id, i) => [id, memberBalances[i]])) }
   }
 
   return {
