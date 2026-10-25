@@ -19,7 +19,7 @@ export function AppIcon({ size = 44 }: { size?: number }) {
       style={{ width: size, height: size, borderRadius: size * 0.24, fontSize: size * 0.56 }}
       aria-hidden="true"
     >
-      s<span className="ml-[0.04em] inline-block size-[0.18em] self-end rounded-full bg-eucalyptus" style={{ marginBottom: size * 0.27 }} />
+      s<span className="ml-[0.04em] inline-block size-[0.22em] self-end rounded-full bg-eucalyptus" style={{ marginBottom: size * 0.27 }} />
     </span>
   );
 }
