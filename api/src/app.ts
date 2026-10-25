@@ -220,9 +220,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
     return { status: res.statusCode, header: (name) => res.headers[name.toLowerCase()] as string | undefined, body: res.json() };
   });
 
-  if ((config.ledgerMode === "module" || config.ledgerMode === "ap4m") && config.seedLiveEscrows) {
-    void service.openSeedEscrows();
-  }
+  if (service.seedsLiveEscrows) void service.openSeedEscrows();
 
   return { app, service, bus, mastercard };
 }

@@ -53,7 +53,7 @@ Then open `http://localhost:8080/state` and stream `curl -N http://localhost:808
 | `DEMO` | `1` with `npm run dev` | Grace 10 s plus seed data (a flag, not a branch) |
 | `GRACE_SECONDS` | 10 in demo, else 120 | Override the grace timer |
 | `LEDGER_MODE` | `stub` | `stub` returns fake hashes after `LEDGER_STUB_DELAY_MS` (3000); `module` imports `LEDGER_MODULE` (`../ledger/index.js`) |
-| `SEED_LIVE_ESCROWS` | `0` | With `module`, opens real escrows for the six seeded tabs at boot |
+| `SEED_LIVE_ESCROWS` | `0` | With `module`, opens real escrows for the two stage tabs (t1, t5) at boot and after every `POST /demo/reset` |
 | `AGENT_MODE` | `local` | `agentcore` calls the deployed settlement agent (`AGENT_RUNTIME_ARN`, `AGENT_QUALIFIER=live`) |
 | `AGENT_TIMEOUT_MS` | `8000` | After this, the deterministic fallback decides |
 | `CORS_ORIGIN` | `*` | Comma-separated origins for the frontend |

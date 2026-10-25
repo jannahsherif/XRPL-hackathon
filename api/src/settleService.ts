@@ -34,6 +34,8 @@ export class SettleService {
   private decisions = new Map<string, Promise<AgentDecision>>();
   private memberTipPct = new Map<string, number>();
   private tabCounter = 100;
+  private resetting: Promise<void> | null = null;
+  private seeding: Promise<void> | null = null;
 
   constructor(
     private readonly ledger: Ledger,
@@ -226,7 +228,20 @@ export class SettleService {
     return this.closeManually(this.getTab(tabId), "Closed manually by staff");
   }
 
-  async reset(): Promise<void> {
+  /** SEED_LIVE_ESCROWS=1 with a real ledger: the stage tabs get real escrows at boot and after every reset. */
+  get seedsLiveEscrows(): boolean {
+    return this.config.seedLiveEscrows && (this.config.ledgerMode === "module" || this.config.ledgerMode === "ap4m");
+  }
+
+  reset(): Promise<void> {
+    // A second reset while one is running joins it rather than racing it for the same escrows.
+    this.resetting ??= this.resetOnce().finally(() => (this.resetting = null));
+    return this.resetting;
+  }
+
+  private async resetOnce(): Promise<void> {
+    // Let seed escrows still being opened land first, so they are cancelled below instead of orphaned.
+    await this.seeding;
     for (const id of this.timers.keys()) this.clearTimer(id);
     const live = [...this.tabs.values()].filter((t) => OPEN_STATUSES.includes(t.status) && t.escrow.txHash);
     await Promise.allSettled(live.map((tab) => this.ledger.cancelTab({ tab })));
@@ -234,13 +249,20 @@ export class SettleService {
     this.seed();
     this.bus.publish("tab.updated", { change: "reset", state: this.snapshot() });
     this.publishMetrics();
+    if (this.seedsLiveEscrows) await this.openSeedEscrows();
   }
 
   /**
    * Open real escrows for the seeded tabs that settle on stage (SEED_TABS liveEscrow: m1's demo tab
-   * and m5's anomaly tab). The other seeded tabs stay display-only with seq: null.
+   * and m5's anomaly tab), at boot and after every reset. The other seeded tabs stay display-only
+   * with seq: null.
    */
-  async openSeedEscrows(): Promise<void> {
+  openSeedEscrows(): Promise<void> {
+    this.seeding ??= this.openStageEscrows().finally(() => (this.seeding = null));
+    return this.seeding;
+  }
+
+  private async openStageEscrows(): Promise<void> {
     const live = new Set(SEED_TABS.filter((s) => s.liveEscrow).map((s) => s.id));
     for (const tab of this.tabs.values()) {
       if (tab.escrow.txHash || !live.has(tab.id)) continue;

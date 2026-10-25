@@ -291,6 +291,19 @@ describe("3. backend flows against the ledger contract (Alex's amount math + err
     expect(tabs.filter((t) => t.escrow.seq !== null).map((t) => t.id)).toEqual(["t1", "t5"]);
   });
 
+  it("SEED_LIVE_ESCROWS=1: /demo/reset cancels the stage escrows and returns t1 and t5 with new ones", async () => {
+    const { mod, balances } = await contractLedger();
+    const { built, inject } = await apiWith(adaptTeamLedger(mod), { seedLiveEscrows: true });
+    for (let i = 0; i < 40 && !built.service.getTab("t5").escrow.txHash; i++) await new Promise((r) => setTimeout(r, 25));
+    const booted = built.service.snapshot().tabs.filter((t) => t.escrow.seq !== null).map((t) => t.escrow.seq);
+    const state = (await inject("POST", "/demo/reset")).json() as { tabs: Tab[] };
+    expect(mod.cancelTab.mock.calls.map((c) => c[0].tab.escrowSeq)).toEqual(booted);
+    const live = state.tabs.filter((t) => t.escrow.seq !== null);
+    expect(live.map((t) => t.id)).toEqual(["t1", "t5"]);
+    expect(live.map((t) => t.escrow.seq)).not.toEqual(booted);
+    expect(balances).toMatchObject({ "member-1": "4000", "member-5": "200" });
+  });
+
   it("seeded stage tabs with live escrows settle through the ledger", async () => {
     const { mod } = await contractLedger();
     const { built, inject, waitFor } = await apiWith(adaptTeamLedger(mod), { seedLiveEscrows: true });
