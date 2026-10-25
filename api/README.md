@@ -123,7 +123,7 @@ Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or me
 | `member.push` | `{tabId, memberId, memberName, items, totalCents, suggestedTipPct, tipOptions, graceEndsAt, secondsLeft}` |
 | `tab.grace_tick` | `{tabId, secondsLeft}`, once a second down to `0`, which arrives just before `reconciling` |
 | `agent.decision` | `{tabId, action, tipPct, reason, source: rules \| agent \| fallback}` |
-| `tab.held` | `{tab, hold}` |
+| `tab.held` | `{tab, hold}`. `hold` is `{reason, triggeredAt, source, code}`: `source` is `rules`, `agent`, `member`, `intent` or `ledger`; `code` is `ITEM_OVER_ALLOWANCE`, `OVER_TYPICAL_SPEND`, `OVER_ALLOWANCE` (rules), `AGENT_HOLD`, `DISPUTED`, `INTENT_VIOLATION`, or the ledger's error code (`LEDGER_TIMEOUT`, `ESCROW_NOT_FOUND`, …) |
 | `tab.settled` | `{tab, settlement, explorerUrls, decision}` |
 | `metrics.updated` | `{outstandingCents, openTabs, settledCount, avgSettleMs}` |
 | `tab.updated` *(additive)* | `{tab, change}` for reconciling, tip, close, reset and escrow_opened |

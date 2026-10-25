@@ -45,6 +45,13 @@ export interface Settlement {
 export interface Hold {
   reason: string;
   triggeredAt: string;
+  /** What held the tab: a hard rule, the agent, the member's dispute, the Verifiable Intent check, or the ledger. */
+  source: AgentDecision["source"] | "member" | "intent" | "ledger";
+  /**
+   * Machine-readable cause. rules: ITEM_OVER_ALLOWANCE, OVER_TYPICAL_SPEND, OVER_ALLOWANCE. agent: AGENT_HOLD.
+   * member: DISPUTED. intent: INTENT_VIOLATION. ledger: the ledger's error code (LEDGER_TIMEOUT, ESCROW_NOT_FOUND, ...).
+   */
+  code: string;
 }
 
 /** AP4M (Mastercard Agent Pay for Machines) Channel and payment proof for a tab. Null outside LEDGER_MODE=ap4m. */
@@ -156,6 +163,8 @@ export interface AgentDecision {
   reason: string;
   /** "rules" when a hard rule decided before the model, "agent" when the LLM decided, "fallback" when the LLM was unavailable. */
   source: "rules" | "agent" | "fallback";
+  /** Hard-rule holds only: which rule fired (see Hold.code). */
+  code?: string;
 }
 
 export type EventType =

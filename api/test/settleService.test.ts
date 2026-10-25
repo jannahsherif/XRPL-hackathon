@@ -341,7 +341,7 @@ describe("hold path", () => {
     service.exit(tab.id);
     await runGrace();
     expect(tab.status).toBe("held");
-    expect(tab.hold).toEqual({ reason: "Odd order", triggeredAt: expect.any(String) });
+    expect(tab.hold).toEqual({ reason: "Odd order", triggeredAt: expect.any(String), source: "agent", code: "AGENT_HOLD" });
     expect(ofType("tab.held")[0].data).toMatchObject({ hold: { reason: "Odd order" } });
     expect(ledger.settleTab).not.toHaveBeenCalled();
   });
@@ -355,7 +355,24 @@ describe("hold path", () => {
     service.exit(tab.id);
     await runGrace();
     expect(tab.status).toBe("held");
-    expect(ofType("agent.decision")[0].data).toMatchObject({ action: "hold", source: "rules" });
+    expect(ofType("agent.decision")[0].data).toMatchObject({ action: "hold", source: "rules", code: "OVER_TYPICAL_SPEND" });
+    expect(tab.hold).toMatchObject({ source: "rules", code: "OVER_TYPICAL_SPEND" });
+  });
+
+  it("a ledger failure after a settle decision holds with source ledger and the ledger's code", async () => {
+    const ledger = fakeLedger({ settleTab: vi.fn().mockRejectedValue(Object.assign(new Error("not validated"), { code: "LEDGER_TIMEOUT" })) });
+    const { service, tab, ofType } = await openedTab(makeService({ ledger }));
+    service.exit(tab.id);
+    await runGrace();
+    expect(ofType("agent.decision")[0].data).toMatchObject({ action: "settle" });
+    expect(tab.status).toBe("held");
+    expect(tab.hold).toMatchObject({ source: "ledger", code: "LEDGER_TIMEOUT" });
+  });
+
+  it("a dispute holds with source member and code DISPUTED", async () => {
+    const { service, tab } = await openedTab();
+    service.dispute(tab.id, "Not my round");
+    expect(tab.hold).toMatchObject({ source: "member", code: "DISPUTED", reason: "Member disputed: Not my round" });
   });
 
   it("approve settles a held tab with the default tip, trimmed to the escrow", async () => {
