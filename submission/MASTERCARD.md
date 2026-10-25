@@ -8,6 +8,14 @@
 
 Hospitality runs on trust: members sign for food and drink and pay later. A single members' club carries $300–400k in outstanding F&B balances, and finance teams spend days reconciling and chasing them. Settle replaces "chase it later" with **"authorize once, settle at the door"**. That is exactly AP4M's model: *authorize once, transact many times, guarantee payment now, settle later.*
 
+| | |
+|---|---|
+| Repo | `[REPO URL]` (today: https://github.com/jannahsherif/XRPL-hackathon) |
+| Video | `[VIDEO URL]` |
+| Run it | [README.md › Run the demo](../README.md#run-the-demo) |
+| AP4M on XRPL EVM (live) | `[AP4M EXPLORER LINKS]`: not run against the live AP4M service yet (see [Status](#status-whats-real-vs-simulated)) |
+| XRPL settlement rail (native token escrow, testnet, 2026-10-25) | Tab escrow [2C13…C032](https://testnet.xrpl.org/transactions/2C13710291EB5C5437F879158308B9DD93826FE370B4C8283D646B6D86A2C032) · settle Batch [FBF1…96DE](https://testnet.xrpl.org/transactions/FBF1C905330ECCC696B5A8F6AAB4607ACF51DB36147697C1BEC9ECF574DF96DE) · held $900 tab, approved and finished [3F03…5BCD](https://testnet.xrpl.org/transactions/3F031ED98D3AB369FF4DFAAF328B03C64F1C0F33ACED9455C30F4250152D5BCD). All links: [COMMONS.md › Proof on testnet](COMMONS.md#proof-on-testnet) |
+
 ---
 
 ## How Settle uses each AP4M control
@@ -201,12 +209,15 @@ sequenceDiagram
 
 ---
 
-## Status (what is live, what is simulated)
+## Status: what's real vs simulated
 
 | Piece | Status |
 |---|---|
+| Native XRPL settlement rail (token escrow per tab, Batch settle, `CLUB_MEMBER` credentials) | **Real on XRPL testnet** (`LEDGER_MODE=module`), run end to end on 2026-10-25 (links above). This is the rail the stage demo runs on |
 | AP4M rules, EIP-712 Vouchers, x402 exchange, settle and close accounting | **Working end to end** in `AP4M_NETWORK=simulated`, with real signatures and the same domain as the deployed ledger. Exercised by the integration tests and a running server |
 | Live XRPL EVM Testnet + AP4M service client | Implemented from the AP4M kit documentation and tested against a faked node and service. **Not yet run against the real service**: that needs the team's portal onboarding and keys |
 | Verifiable Intent | Simplified ES256 profile (mandate + L3 record). SD-JWT selective disclosure is the production step |
 | Card funding | SIMULATED, per the engineering plan |
+| Payout rail (venue cash-out) | SIMULATED, labelled so on the dashboard |
+| Member leaving (geofence), POS, push notification | Simulated in the web demo: a "Simulate exit · DEMO" button, a demo terminal standing in for Toast or Lightspeed, and phone frames in the browser |
 | AP4M kit code | Not vendored: the integration reimplements the documented protocol with `ethers` |
