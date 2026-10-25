@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router";
 import { ErrorToast } from "./components/ui";
 import { SettleProvider, useSettle } from "./lib/store";
 import { Dashboard } from "./screens/Dashboard";
+import { Login } from "./screens/Login";
 import { ManagerRoute } from "./screens/Manager";
 import { MemberRoute } from "./screens/Member";
 import { Pos } from "./screens/Pos";
@@ -17,6 +18,7 @@ export function App() {
         <Route path="/member/:tabId" element={<MemberRoute />} />
         <Route path="/manager" element={<ManagerRoute />} />
         <Route path="/present" element={<Present />} />
+        <Route path="/login" element={<Login />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <Errors />
