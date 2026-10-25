@@ -52,7 +52,7 @@ Then open `http://localhost:8080/state` and stream `curl -N http://localhost:808
 |---|---|---|
 | `DEMO` | `1` with `npm run dev` | Grace 10 s plus seed data (a flag, not a branch) |
 | `GRACE_SECONDS` | 10 in demo, else 120 | Override the grace timer |
-| `LEDGER_MODE` | `stub` | `stub` returns fake hashes after `LEDGER_STUB_DELAY_MS` (3000); `module` imports `LEDGER_MODULE` (`../ledger/index.js`) |
+| `LEDGER_MODE` | `stub` | `stub` returns fake hashes after `LEDGER_STUB_DELAY_MS` (3000); `module` imports `LEDGER_MODULE` (`../ledger/src/index.ts`) |
 | `LEDGER_FIXTURE` | `../ledger/fixtures/happy-path.json` | Stub only: when this file exists, the stub hands out its real testnet hashes, so explorer links resolve (amounts stay the stub's). Written by `npm run demo:happy-path` in `ledger/` or `npm run acceptance -- --fixture` in `web/` against module mode |
 | `SEED_LIVE_ESCROWS` | `0` | With `module`, opens real escrows for the two stage tabs (t1, t5) at boot and after every `POST /demo/reset` |
 | `AGENT_MODE` | `local` | `agentcore` calls the deployed settlement agent (`AGENT_RUNTIME_ARN`, `AGENT_QUALIFIER=live`) |
@@ -132,7 +132,7 @@ Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or me
 Notes on the contract:
 
 - `allowance`, `settlement.toVenue`, `settlement.toMember` and every `/balances` amount are 2-decimal strings in token units (`"600.00"`, `"74.40"`), the same units the ledger uses; the API pads the ledger's trimmed values (`"74.4"`). Every `*Cents` field is an integer number of cents.
-- The tab object has exactly the fields in the contract. `tab.updated` is the one additive event type.
+- The tab object has the contract's fields plus two additive ones, `mandate` and `ap4m`, which are null when their feature is off. In the core flow `tab.updated` is the one additive event type; the Mastercard features add their own events (see the table above).
 - Everything a settled tab shows is on the tab itself, so `GET /state` after a reload has it: `settlement.explorerUrls` (finish, refund if any, Batch if batched), `settlement.submittedAt`/`validatedAt`, and the open's `escrow.submittedAt`/`validatedAt` (module mode; the stub omits the timestamps).
 - Outstanding balances start at $342,180.00 and drop by `toVenue` on every settle.
 - Each member has `credentialed` (an accepted CLUB_MEMBER XRPL Credential, see `ledger/README.md`). With the real ledger it comes from testnet at boot and reset, and is re-checked whenever a member last seen uncredentialed tries to open a tab. `m6` (Casey Moreau) is a lapsed, display-only member who is never credentialed, so the refusal can be shown in stub mode.

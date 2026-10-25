@@ -303,7 +303,7 @@ Resources:
             - { Name: PORT, Value: "8080" }
             - { Name: DEMO, Value: !Ref Demo }
             - { Name: LEDGER_MODE, Value: !Ref LedgerMode }
-            - { Name: LEDGER_MODULE, Value: ../ledger/index.js }
+            - { Name: LEDGER_MODULE, Value: ../ledger/src/index.ts }
             - { Name: AGENT_MODE, Value: agentcore }
             - Name: AGENT_RUNTIME_ARN
               Value: !ImportValue
