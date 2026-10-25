@@ -11,6 +11,10 @@ Building autonomous financial agents on the XRP Ledger | XRPL Hackathon NYC 2026
 
 ## Run the demo
 
+**Every run starts the same way: stop the API → `npm run demo:reset` in `ledger/` → boot with `SEED_LIVE_ESCROWS=1` → wait 30 s.**
+
+**Never press R after scenario B; restart from the top.**
+
 You need Node 24 (22.18 or later), npm, and `ledger/.env` with the testnet seeds (ask Alex; it is gitignored, never commit it). Install once:
 
 ```bash
@@ -30,10 +34,10 @@ It ends by printing `venue 0`, `member-1 5000` … `member-5 1200` (TUSD).
 **2. Boot the API on the real ledger** (terminal 2):
 
 ```bash
-cd api && LEDGER_MODE=module SEED_LIVE_ESCROWS=1 npm run dev
+cd api && HOST=127.0.0.1 LEDGER_MODE=module SEED_LIVE_ESCROWS=1 npm run dev
 ```
 
-Wait for `settle backend up`. It then opens real escrows for the two stage tabs: t1 (Eleanor Vance, Bar 3) and t5 (Jordan Pike, Library 2). Each escrow can only be finished 20 s after it opens (FinishAfter, rounded up to the next ledger close), so **wait 30 s** before step 4's exits.
+`HOST=127.0.0.1` keeps the API off the venue Wi-Fi: with no `STAFF_TOKEN`, anyone who could reach it could reset or approve. Wait for `settle backend up`. It then opens real escrows for the two stage tabs: t1 (Eleanor Vance, Bar 3) and t5 (Jordan Pike, Library 2). Each escrow can only be finished 20 s after it opens (FinishAfter, rounded up to the next ledger close), so **wait 30 s** before step 4's exits.
 
 **3. Start the web app** (terminal 3):
 
@@ -64,7 +68,7 @@ Opening a brand-new tab instead (POS, `+`) works too, but it must be at least 30
 
 - [ ] **Reset before boot, never within 30 s after.** `npm run demo:reset` only with the API stopped. Don't press `R` in the first 30 s after the API boots (or after a previous `R`): it has to cancel escrows that are still too fresh, and it just waits.
 - [ ] **Don't exit a tab within 30 s of opening it.** The settle waits for FinishAfter; on stage that looks like a hang.
-- [ ] **To rerun scenario 2, restart from step 1.** Approving the $900 tab leaves member-5 with 200 TUSD, so `R` can't re-open t5's 1,000 escrow. Stop the API (Ctrl-C), `npm run demo:reset`, boot again, wait 30 s.
+- [ ] **Never press R after scenario B; restart from the top.** Approving the $900 tab leaves member-5 with 200 TUSD, so `R` can't re-open t5's 1,000 escrow and the next scenario B would end held with `ESCROW_NOT_FOUND`. Stop the API (Ctrl-C), `npm run demo:reset`, boot again, wait 30 s. The same goes for going on stage after a rehearsal.
 - [ ] **Credentials are already issued.** Never run `setup:accounts`, `setup:token` or `setup:credentials` before the demo.
 - [ ] **Pre-open the explorer tabs** (XRPL testnet):
   - Venue: https://testnet.xrpl.org/accounts/racCSEur13ufSxQozezdFKrvykwyWnjGE3
