@@ -7,7 +7,9 @@ import { ledgerErrorCode } from "./ledger/index.js";
 import { centsToDecimal, decimalToCents, tipCentsFor, toTwoDecimals } from "./money.js";
 import { SEED_MEMBERS, SEED_MENU, SEED_POLICY, SEED_TABS } from "./seed.js";
 import { OPEN_STATUSES, assertTransition } from "./stateMachine.js";
-import type { AgentDecision, Escrow, Ledger, Member, MenuItem, Metrics, OpenTabResult, Policy, Tab, TabStatus } from "./types.js";
+import type { AgentDecision, Escrow, Ledger, LedgerErrorCode, Member, MenuItem, Metrics, OpenTabResult, Policy, Tab, TabStatus } from "./types.js";
+
+const LEDGER_CODES = new Set<string>(["INSUFFICIENT_FUNDS", "ESCROW_NOT_FOUND", "LEDGER_TIMEOUT", "LEDGER_REJECTED", "INVALID_INPUT"] satisfies LedgerErrorCode[]);
 
 export class NotFoundError extends Error {
   readonly statusCode = 404;
@@ -390,10 +392,12 @@ export class SettleService {
       try {
         cancelTxHash = (await this.ledger.cancelTab({ tab: structuredClone(tab) })).txHash;
       } catch (err) {
-        // Keep the ledger's code so HTTP maps it (LEDGER_TIMEOUT 504, LEDGER_REJECTED 502, ESCROW_NOT_FOUND 409).
-        const code = (err as { code?: string }).code;
-        if (!code) throw new ConflictError(`Could not cancel escrow (${ledgerErrorCode(err)})`);
-        throw Object.assign(new Error(`Could not cancel escrow (${code}): ${(err as Error).message}`), { code });
+        // Keep a ledger code so HTTP maps it (LEDGER_TIMEOUT 504, LEDGER_REJECTED 502, ESCROW_NOT_FOUND 409);
+        // the raw ledger message stays in the server log.
+        const code = ledgerErrorCode(err);
+        console.warn(`cancel escrow for ${tab.id} failed (${code}): ${(err as Error).message}`);
+        if (!LEDGER_CODES.has(code)) throw new ConflictError(`Could not cancel escrow (${code})`);
+        throw Object.assign(new Error(`Could not cancel escrow (${code})`), { code });
       }
     }
     this.move(tab, "closed_manually");
