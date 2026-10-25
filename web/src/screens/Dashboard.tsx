@@ -224,7 +224,7 @@ function TabRow({ tab, meta, now, selected, onSelect }: { tab: Tab; meta?: TabMe
       <td className="tabular">{usd(total)}</td>
       <td className="tabular">
         {tab.settlement ? (
-          <span className="leading-snug">
+          <span className="leading-snug whitespace-nowrap">
             {tokens(tab.allowance, { label: false })} → {tokens(tab.settlement.toMember, { label: false })}
             <br />
             <span className="text-[14px] text-muted">returned</span>
@@ -267,10 +267,12 @@ function StatusText({ tab, meta, now }: { tab: Tab; meta?: TabMeta; now: number 
     case "settled": {
       const how = meta?.settleDecision?.reason === "Approved by manager" ? "approved" : "on exit";
       return (
-        <span className="inline-flex items-center gap-2">
-          <IconCheckCircle size={18} className="text-eucalyptus" />
+        <span className="inline-flex items-start gap-2 leading-snug">
+          <IconCheckCircle size={18} className="mt-0.5 text-eucalyptus" />
           <span>
-            <span className="font-semibold text-midnight">Settled</span> · {seconds(tab.settlement?.elapsedMs ?? 0)} · {how}
+            <span className="font-semibold text-midnight">Settled</span> · {seconds(tab.settlement?.elapsedMs ?? 0)}
+            <br />
+            <span className="text-[13px] text-muted">{how}</span>
           </span>
         </span>
       );

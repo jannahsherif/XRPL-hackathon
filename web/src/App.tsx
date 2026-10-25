@@ -6,6 +6,7 @@ import { Dashboard } from "./screens/Dashboard";
 import { ManagerRoute } from "./screens/Manager";
 import { MemberRoute } from "./screens/Member";
 import { Pos } from "./screens/Pos";
+import { Present } from "./screens/Present";
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
         <Route path="/pos" element={<Pos />} />
         <Route path="/member/:tabId" element={<MemberRoute />} />
         <Route path="/manager" element={<ManagerRoute />} />
+        <Route path="/present" element={<Present />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <Errors />

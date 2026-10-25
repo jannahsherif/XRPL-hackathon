@@ -40,6 +40,8 @@ interface Store {
   memberFocus: string | null;
   /** Latest tab to be held, for the manager phone. */
   heldFocus: string | null;
+  /** The last live member.push, so the presenter view can bring the member phone up. */
+  lastPush: { tabId: string; at: string } | null;
   error: { message: string; at: number } | null;
 }
 
@@ -60,6 +62,7 @@ const initial: Store = {
   lastSettled: null,
   memberFocus: null,
   heldFocus: null,
+  lastPush: null,
   error: null,
 };
 
@@ -99,6 +102,7 @@ function reduceEvent(store: Store, event: SettleEvent): Store {
         ...store,
         meta: withMeta(store, push.tabId, live ? { push, secondsLeft: push.secondsLeft } : { push }),
         memberFocus: live ? push.tabId : (store.memberFocus ?? push.tabId),
+        lastPush: live ? { tabId: push.tabId, at: event.at } : store.lastPush,
       };
     }
     case "tab.grace_tick":
