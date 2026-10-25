@@ -50,7 +50,7 @@ import { openTab, settleTab, cancelTab, getBalances, explorerUrl, createLedger }
 
 The top-level functions share one instance configured from `ledger/.env`. `createLedger(config)`
 builds your own; every field is optional: `wsUrl`, `token`, `envPath`, `accountsPath`,
-`explorerBase`, `finishAfterSeconds` (5), `cancelAfterSeconds` (8h), `useBatch` (true),
+`explorerBase`, `finishAfterSeconds` (20), `cancelAfterSeconds` (8h), `useBatch` (true),
 `ledgerOffset`, `timeoutMs`, `log`. Seeds are never passed in. They're read from `ledger/.env`, or
 from the environment when there's no file. Addresses come from the committed `accounts.json`.
 
@@ -66,7 +66,9 @@ Times are ISO 8601 strings.
 
 ### `openTab({ memberId, allowance })`
 
-Escrows `allowance` from the member to the venue. `FinishAfter` = now + 5 s, `CancelAfter` = now + 8 h.
+Escrows `allowance` from the member to the venue. `FinishAfter` = now + 20 s, `CancelAfter` = now + 8 h.
+rippled rejects an EscrowCreate with `tecNO_PERMISSION` if `FinishAfter` has already passed when it
+lands, and a transaction lands 3.5–7 s after submit with close times rounded to 10 s; 20 s leaves room.
 
 | field | |
 |---|---|
@@ -82,7 +84,8 @@ must be a positive integer (a numeric string is accepted). `amount` is
 the spend *excluding* the tip. The allowance is read from the escrow on the ledger. The venue
 finishes the escrow and refunds `allowance − amount − tipAmount` in one all-or-nothing Batch; if the
 Batch fails for any reason it falls back to EscrowFinish then Payment, each waited on until validated.
-If called before FinishAfter has passed on a validated ledger, it waits (not counted in `elapsedMs`).
+If called before FinishAfter has passed on a validated ledger, it logs `waiting …` and waits, up to
+about 30 s after open (not counted in `elapsedMs`); being early never makes it fail.
 
 | field | |
 |---|---|

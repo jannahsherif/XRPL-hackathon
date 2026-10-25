@@ -81,7 +81,7 @@ How the API maps onto the ledger module ([src/ledger/teamLedger.ts](src/ledger/t
 | `tab.escrow` | also carries the EscrowCreate's `submittedAt` and `validatedAt` |
 
 - **Seeded escrows:** `SEED_LIVE_ESCROWS=1` opens real escrows only for the two stage tabs, `t1` (m1's demo tab) and `t5` (m5's anomaly tab). The other four stay display-only (`seq: null`) and hold with `ESCROW_NOT_FOUND` if exited.
-- **Timing:** `openTab` takes 3–6 s, and settling waits for FinishAfter (up to about 15 s after open) plus 3.5–7 s to validation. Don't exit a tab within 15 s of opening it.
+- **Timing:** `openTab` takes 3–6 s, and settling waits for FinishAfter (20 s after open, up to about 30 s with ledger close-time rounding) plus 3.5–7 s to validation. Don't exit a tab within 30 s of opening it; if you do, the settle (and a close or reset of a fresh tab) just waits.
 - **Error codes to HTTP:** `INVALID_INPUT` 400, `INSUFFICIENT_FUNDS` 402, `ESCROW_NOT_FOUND` 409, `LEDGER_REJECTED` 502, `LEDGER_TIMEOUT` 504. Responses look like `{ error, code }`. Close and reject map the escrow cancel's code the same way.
 - **Restoring balances:** `/demo/reset` cancels live tabs but doesn't restore balances. `npm run demo:reset` in `ledger/` does.
 - **In AWS:** put `VENUE_SEED` and `MEMBER_1_SEED`…`MEMBER_5_SEED` in `settle/<stage>/ledger-env`, never `ISSUER_SEED`.

@@ -42,7 +42,10 @@ export const SEED_BALANCES: Record<string, string> = {
 export const TRUST_LIMIT = '1000000'
 
 export const TAB_DEFAULTS = {
-  finishAfterSeconds: 5,
+  // rippled rejects an EscrowCreate whose FinishAfter isn't after the parent ledger's close time
+  // (tecNO_PERMISSION). A transaction lands 3.5-7 s after submit and close times round to 10 s,
+  // so 5 s occasionally failed; 20 s leaves room.
+  finishAfterSeconds: 20,
   cancelAfterSeconds: 8 * 60 * 60,
 }
 
