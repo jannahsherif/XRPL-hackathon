@@ -1,21 +1,24 @@
-import { useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { Sidebar } from "../components/Sidebar";
-import { IconCheckCircle, IconClose, IconCoins, IconMembers, IconTabs } from "../components/icons";
-import { AnimatedNumber, Avatar, Badge, Button, Eyebrow, ExplorerLink, Spinner } from "../components/ui";
+import { TabDrawer } from "../components/TabDrawer";
+import { IconCheckCircle, IconCoins, IconMembers, IconTabs } from "../components/icons";
+import { AnimatedNumber, Badge, Eyebrow, Spinner } from "../components/ui";
 import { MOCK, TOKEN } from "../lib/config";
-import { clockTimeAmPm, codeLabel, countdown, duration, explorerFor, hasEscrow, itemCount, policyLine, seconds, secondsBetween, shortDate, shortHash, shortName, useNow } from "../lib/format";
+import { clockTimeAmPm, codeLabel, countdown, duration, hasEscrow, itemCount, seconds, shortDate, shortName, useNow } from "../lib/format";
 import { toCents, tokens, usd } from "../lib/money";
 import { useSettle, type TabMeta } from "../lib/store";
-import { byOpenedDesc, canOrder, graceLeft, inGrace } from "../lib/tabs";
+import { byOpenedDesc, graceLeft, inGrace } from "../lib/tabs";
 import { OPEN_STATUSES, type SettleState, type Tab } from "../lib/types";
-import { useTxInfo } from "../lib/xrpl";
 
-/** Staff dashboard. `embedded` drops the sidebar for the presenter view. */
-export function Dashboard({ embedded = false }: { embedded?: boolean }) {
+/**
+ * Staff dashboard. `embedded` drops the sidebar for the presenter view, which also passes
+ * `onOpenHold` to show a hold on its manager phone instead of navigating.
+ */
+export function Dashboard({ embedded = false, onOpenHold }: { embedded?: boolean; onOpenHold?: (tabId: string) => void }) {
   return embedded ? (
-    <DashboardMain embedded />
+    <DashboardMain embedded onOpenHold={onOpenHold} />
   ) : (
     <div className="flex h-full">
       <Sidebar active="tabs" />
@@ -24,8 +27,10 @@ export function Dashboard({ embedded = false }: { embedded?: boolean }) {
   );
 }
 
-function DashboardMain({ embedded = false }: { embedded?: boolean }) {
+function DashboardMain({ embedded = false, onOpenHold }: { embedded?: boolean; onOpenHold?: (tabId: string) => void }) {
   const { state, meta, connected } = useSettle();
+  const navigate = useNavigate();
+  const openHold = onOpenHold ?? ((tabId: string) => navigate(`/manager?tab=${tabId}`));
   const [params, setParams] = useSearchParams();
   const [localSelected, setLocalSelected] = useState<string | null>(null);
   // Standalone, the selection lives in ?tab= so the POS can link to a tab; embedded, it stays local.
@@ -50,6 +55,7 @@ function DashboardMain({ embedded = false }: { embedded?: boolean }) {
           </p>
         </div>
         <div className="flex flex-col items-end gap-3 pt-2">
+          <SettledToast state={state} />
           <RailBadges state={state} connected={connected} />
         </div>
       </header>
@@ -58,7 +64,7 @@ function DashboardMain({ embedded = false }: { embedded?: boolean }) {
 
       <div className="flex min-h-0 flex-1 gap-5">
         <TabsTable tabs={tabs} meta={meta} now={now} selectedId={selected?.id ?? null} onSelect={(id) => select(id === selectedId ? null : id)} />
-        {selected && <TabDrawer key={selected.id} tab={selected} meta={meta[selected.id]} now={now} onClose={() => select(null)} />}
+        {selected && <TabDrawer key={selected.id} tab={selected} meta={meta[selected.id]} now={now} onClose={() => select(null)} onOpenHold={openHold} />}
       </div>
     </main>
   );
@@ -69,6 +75,32 @@ function Loading({ connected }: { connected: boolean }) {
     <main className="flex flex-1 items-center justify-center text-muted">
       <Spinner /> <span className="ml-3">{connected ? "Loading tonight's tabs…" : "Connecting to the Settle API…"}</span>
     </main>
+  );
+}
+
+/** "✓ E. Vance settled  $170.40 → 170.40 TUSD  3.0 s" for a few seconds after each live settle. */
+function SettledToast({ state }: { state: SettleState }) {
+  const { lastSettled } = useSettle();
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!lastSettled || Date.now() - Date.parse(lastSettled.at) > 15_000) return;
+    setVisible(true);
+    const id = setTimeout(() => setVisible(false), 12_000);
+    return () => clearTimeout(id);
+  }, [lastSettled]);
+  const tab = state.tabs.find((t) => t.id === lastSettled?.tabId);
+  if (!visible || !tab?.settlement) return null;
+  return (
+    <div className="animate-settle-in flex items-center gap-3 rounded-2xl border border-stone/70 bg-paper px-5 py-3 text-[16px] shadow-sm">
+      <span className="flex size-7 items-center justify-center rounded-full bg-eucalyptus text-ivory">
+        <IconCheckCircle size={18} />
+      </span>
+      <span className="font-medium text-midnight">{shortName(tab.memberName)} settled</span>
+      <span className="text-graphite tabular">
+        {usd(lastSettled!.toVenueCents)} → {tokens(tab.settlement.toVenue)}
+      </span>
+      <span className="font-medium text-midnight tabular">{seconds(tab.settlement.elapsedMs)}</span>
+    </div>
   );
 }
 
@@ -152,7 +184,7 @@ function TabsTable({ tabs, meta, now, selectedId, onSelect }: { tabs: Tab[]; met
           <thead className="sticky top-0 z-10 bg-linen">
             <tr>
               {["Member", "Seat", "Items", "Total", "Allowance", "Status"].map((h) => (
-                <th key={h} className="px-5 py-4 text-[13px] font-medium tracking-[0.14em] text-graphite uppercase">
+                <th key={h} className="px-4 py-4 text-[13px] font-medium tracking-[0.14em] text-graphite uppercase">
                   {h}
                 </th>
               ))}
@@ -173,8 +205,8 @@ function TabsTable({ tabs, meta, now, selectedId, onSelect }: { tabs: Tab[]; met
 function TabRow({ tab, meta, now, selected, onSelect }: { tab: Tab; meta?: TabMeta; now: number; selected: boolean; onSelect: () => void }) {
   const done = tab.status === "settled" || tab.status === "closed_manually";
   const held = tab.status === "held";
-  const bg = selected ? "bg-sage-soft/70" : held ? "bg-terracotta-soft" : "hover:bg-linen/60";
-  const edge = selected ? "shadow-[inset_4px_0_0_var(--color-eucalyptus)]" : held ? "shadow-[inset_4px_0_0_var(--color-terracotta)]" : "";
+  const bg = held ? "bg-terracotta-soft" : selected ? "bg-sage-soft/70" : "hover:bg-linen/60";
+  const edge = held ? "shadow-[inset_4px_0_0_var(--color-terracotta)]" : selected ? "shadow-[inset_4px_0_0_var(--color-eucalyptus)]" : "";
   const text = done && !selected ? "text-muted" : "text-graphite";
   const total = tab.settlement ? toCents(tab.settlement.toVenue) : tab.totalCents;
 
@@ -184,13 +216,13 @@ function TabRow({ tab, meta, now, selected, onSelect }: { tab: Tab; meta?: TabMe
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect())}
       tabIndex={0}
       aria-selected={selected}
-      className={`cursor-pointer border-t border-stone/50 text-[16px] transition-colors outline-none focus-visible:bg-linen ${bg} ${text}`}
+      className={`cursor-pointer border-t border-stone/50 text-[16px] transition-colors outline-none focus-visible:bg-linen [&>td]:px-4 [&>td]:py-5 ${bg} ${text} ${selected && held ? "ring-2 ring-terracotta-line ring-inset" : ""}`}
     >
-      <td className={`px-5 py-5 font-medium ${edge} ${done && !selected ? "" : "text-midnight"}`}>{shortName(tab.memberName)}</td>
-      <td className="px-5 py-5">{tab.seat}</td>
-      <td className="px-5 py-5 tabular">{itemCount(tab)}</td>
-      <td className="px-5 py-5 tabular">{usd(total)}</td>
-      <td className="px-5 py-5 tabular">
+      <td className={`font-medium whitespace-nowrap ${edge} ${done && !selected ? "" : "text-midnight"}`}>{shortName(tab.memberName)}</td>
+      <td className="whitespace-nowrap">{tab.seat}</td>
+      <td className="tabular">{itemCount(tab)}</td>
+      <td className="tabular">{usd(total)}</td>
+      <td className="tabular">
         {tab.settlement ? (
           <span className="leading-snug">
             {tokens(tab.allowance, { label: false })} → {tokens(tab.settlement.toMember, { label: false })}
@@ -209,7 +241,7 @@ function TabRow({ tab, meta, now, selected, onSelect }: { tab: Tab; meta?: TabMe
           </span>
         )}
       </td>
-      <td className="px-5 py-5">
+      <td className="whitespace-nowrap">
         <StatusText tab={tab} meta={meta} now={now} />
       </td>
     </tr>
@@ -246,9 +278,9 @@ function StatusText({ tab, meta, now }: { tab: Tab; meta?: TabMeta; now: number 
     case "held":
       return (
         <span className="leading-snug text-terracotta">
-          <span className="font-semibold">Held</span> · {tab.hold ? codeLabel(tab.hold.code) : "manager review"}
+          <span className="font-semibold">Held</span> · manager review
           <br />
-          <span className="text-[13px]">
+          <span className="text-[13px]" title={tab.hold ? codeLabel(tab.hold.code) : undefined}>
             {tab.hold?.code} · {tab.hold?.source}
           </span>
         </span>
@@ -259,150 +291,3 @@ function StatusText({ tab, meta, now }: { tab: Tab; meta?: TabMeta; now: number 
       return <span className="text-muted">Open · {duration(now - Date.parse(tab.openedAt))}</span>;
   }
 }
-
-// Drawer ----------------------------------------------------------------------
-
-function TabDrawer({ tab, meta, now, onClose }: { tab: Tab; meta?: TabMeta; now: number; onClose: () => void }) {
-  const { state, balances, actions } = useSettle();
-  const [busy, setBusy] = useState<"exit" | "close" | null>(null);
-  const member = state?.members.find((m) => m.id === tab.memberId);
-  const policy = state!.policy;
-  const live = state!.mode.ledger !== "stub";
-  const [escrowTx] = useTxInfo([tab.escrow.txHash], live);
-  const ledgerIndex = escrowTx?.ledgerIndex ?? meta?.ledgerIndex;
-  const balance = balances?.members[tab.memberId];
-
-  const act = async (kind: "exit" | "close") => {
-    setBusy(kind);
-    try {
-      await (kind === "exit" ? actions.exit(tab.id) : actions.close(tab.id));
-    } catch {
-      // the store shows the error
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const validated = secondsBetween(tab.escrow.submittedAt, tab.escrow.validatedAt);
-  const closable = OPEN_STATUSES.includes(tab.status) && tab.status !== "reconciling";
-
-  return (
-    <aside className="animate-settle-in flex w-[440px] shrink-0 flex-col overflow-hidden rounded-2xl border border-stone/60 bg-paper">
-      <div className="flex items-center gap-4 border-b border-stone/50 px-6 py-5">
-        <Avatar name={tab.memberName} size={56} />
-        <Eyebrow className="min-w-0 flex-1 truncate">Tab · {shortName(tab.memberName)}</Eyebrow>
-        <button type="button" onClick={onClose} className="flex size-9 items-center justify-center rounded-full border border-stone text-graphite hover:bg-linen" aria-label="Close drawer">
-          <IconClose size={16} />
-        </button>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto px-6 py-5">
-        <div>
-          <div className="font-display text-[22px] font-medium text-midnight">{tab.memberName}</div>
-          <div className="mt-0.5 text-[14px] text-muted">
-            {member ? `${member.tier[0].toUpperCase()}${member.tier.slice(1)}` : "Member"} · {tab.seat} · opened {clockTimeAmPm(tab.openedAt)}
-          </div>
-          <dl className="mt-3 grid grid-cols-2 gap-3 text-[14px]">
-            <div className="rounded-xl border border-stone/60 px-3 py-2">
-              <dt className="text-muted">House balance</dt>
-              <dd className="mt-0.5 font-medium text-midnight tabular">{balance ? tokens(balance) : "—"}</dd>
-            </div>
-            <div className="rounded-xl border border-stone/60 px-3 py-2">
-              <dt className="text-muted">Typical spend</dt>
-              <dd className="mt-0.5 font-medium text-midnight tabular">{member ? usd(member.typicalSpendCents, { trim: true }) : "—"}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <section className="rounded-xl bg-linen px-4 py-4 text-[15px]">
-          <Eyebrow className="text-graphite">Escrow</Eyebrow>
-          {hasEscrow(tab) ? (
-            <dl className="mt-3 space-y-2">
-              <Row label="Allowance" value={tokens(tab.allowance)} strong />
-              <Row label="Transaction" value={`EscrowCreate${tab.escrow.seq !== null ? ` · seq ${tab.escrow.seq}` : ""}`} />
-              <Row label="Ledger" value={ledgerIndex ? `#${ledgerIndex.toLocaleString("en-US")}` : live && tab.escrow.txHash ? "looking up…" : "—"} />
-              {tab.escrow.txHash ? (
-                <>
-                  <Row label="tx" value={<span className="font-mono text-[13px]">{shortHash(tab.escrow.txHash)}</span>} />
-                  <div className="flex items-center justify-between pt-1">
-                    <ExplorerLink href={tab.escrow.explorerUrl ?? explorerFor(tab.escrow.txHash)} className="text-[14px]">
-                      View on testnet explorer
-                    </ExplorerLink>
-                    <span className="inline-flex items-center gap-1.5 text-[14px] text-graphite">
-                      <IconCheckCircle size={16} className="text-eucalyptus" />
-                      {validated ? `validated · ${validated}` : live ? "validated" : "stub ledger"}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <p className="pt-1 text-[13px] text-muted">Seeded tab: placeholder escrow (stub ledger), no transaction.</p>
-              )}
-            </dl>
-          ) : (
-            <p className="mt-2 text-[14px] text-muted">
-              No escrow on ledger: a display-only seeded tab. Exiting it holds with ESCROW_NOT_FOUND.
-            </p>
-          )}
-        </section>
-
-        {inGrace(tab) && (
-          <section className="rounded-xl border border-eucalyptus/60 bg-sage-soft/50 px-4 py-3 text-[15px] text-midnight">
-            <div className="font-medium tabular">Exit detected · settling in {countdown(graceLeft(tab, meta, now))}</div>
-            <div className="mt-0.5 text-[14px] text-graphite">Member was pushed the tab and can add a tip or dispute.</div>
-          </section>
-        )}
-        {tab.status === "reconciling" && (
-          <section className="rounded-xl border border-eucalyptus/60 bg-sage-soft/50 px-4 py-3 text-[15px] text-midnight">
-            <div className="flex items-center gap-2 font-medium">
-              <Spinner size={14} /> Agent reconciling against the POS
-            </div>
-            {meta?.decision && <div className="mt-1 text-[14px] text-graphite">{meta.decision.reason}</div>}
-          </section>
-        )}
-
-        <section>
-          <Eyebrow className="text-graphite">Tab</Eyebrow>
-          <ul className="mt-2 divide-y divide-stone/50 text-[15px]">
-            {tab.items.map((item) => (
-              <li key={item.name} className="flex justify-between py-2">
-                <span>
-                  {item.name}
-                  {item.qty > 1 && <span className="text-muted"> × {item.qty}</span>}
-                </span>
-                <span className="tabular">{usd(item.priceCents * item.qty)}</span>
-              </li>
-            ))}
-            {tab.items.length === 0 && <li className="py-2 text-muted">No items yet.</li>}
-            <li className="flex justify-between py-2 font-medium text-midnight">
-              <span>Subtotal</span>
-              <span className="tabular">{usd(tab.totalCents)}</span>
-            </li>
-          </ul>
-        </section>
-
-        <p className="text-[14px] text-graphite">
-          <span className="font-medium text-midnight">Agent policy</span> · {policyLine(policy)} · tip {policy.defaultTipPct}% by default · grace {policy.graceSeconds} s
-        </p>
-      </div>
-
-      <div className="flex gap-3 border-t border-stone/50 px-6 py-4">
-        <Button variant="outline" className="flex-1 px-3 text-[15px] whitespace-nowrap" onClick={() => act("close")} disabled={!closable} busy={busy === "close"}>
-          {busy === "close" ? <Spinner /> : null} Close tab manually
-        </Button>
-        <Button className="flex-1 px-3 text-[15px] whitespace-nowrap" onClick={() => act("exit")} disabled={!canOrder(tab)} busy={busy === "exit"}>
-          {busy === "exit" ? <Spinner /> : null} Simulate exit · DEMO
-        </Button>
-      </div>
-    </aside>
-  );
-}
-
-function Row({ label, value, strong }: { label: string; value: ReactNode; strong?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-graphite">{label}</dt>
-      <dd className={`text-right tabular ${strong ? "font-semibold text-midnight" : "text-midnight"}`}>{value}</dd>
-    </div>
-  );
-}
-
