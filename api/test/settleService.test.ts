@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { loadLedger } from "../src/ledger/index.js";
 import { ConflictError, NotFoundError } from "../src/settleService.js";
 import { TransitionError } from "../src/stateMachine.js";
-import { fakeLedger, fixedAgent, flush, makeService } from "./helpers.js";
+import { fakeLedger, fixedAgent, flush, makeService, testConfig } from "./helpers.js";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -627,5 +628,92 @@ describe("openSeedEscrows (LEDGER_MODE=module)", () => {
     await service.openSeedEscrows();
     expect(service.snapshot().tabs.filter((t) => t.escrow.txHash)).toHaveLength(1);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("INSUFFICIENT_FUNDS"));
+  });
+});
+
+describe("reset with SEED_LIVE_ESCROWS=1 (LEDGER_MODE=module)", () => {
+  const live = { ledgerMode: "module", seedLiveEscrows: true } as const;
+
+  /** The API's stub ledger (testnet balances, 1 s per call) behind spies. */
+  async function stubLedger() {
+    const stub = await loadLedger(testConfig({ ledgerStubDelayMs: 1000 }));
+    return fakeLedger({
+      openTab: vi.fn(stub.openTab),
+      settleTab: vi.fn(stub.settleTab),
+      cancelTab: vi.fn(stub.cancelTab),
+      getBalances: vi.fn(stub.getBalances),
+    });
+  }
+
+  /** Lets a ledger-backed call finish under fake timers. */
+  const drain = async <T>(p: Promise<T>) => {
+    await vi.advanceTimersByTimeAsync(10_000);
+    return p;
+  };
+
+  it("re-opens the stage tabs' escrows, so t1 settles again after a reset", async () => {
+    const ledger = await stubLedger();
+    const { service, ofType } = makeService({ ledger, config: live });
+    await drain(service.openSeedEscrows()); // what boot does
+    const before = { t1: service.getTab("t1").escrow, t5: service.getTab("t5").escrow };
+    service.exit("t1");
+    await runGrace(12);
+    expect(service.getTab("t1").status).toBe("settled");
+
+    await drain(service.reset());
+
+    // t5 was still open, so its escrow is cancelled; t1's already finished.
+    expect(ledger.cancelTab.mock.calls.map((c) => c[0].tab.id)).toEqual(["t5"]);
+    const tabs = service.snapshot().tabs;
+    expect(tabs.filter((t) => t.escrow.txHash).map((t) => t.id)).toEqual(["t1", "t5"]);
+    expect(tabs.filter((t) => !t.escrow.txHash).every((t) => t.escrow.seq === null)).toBe(true);
+    expect(service.getTab("t1").escrow.seq).not.toBe(before.t1.seq);
+    expect(service.getTab("t5").escrow.seq).not.toBe(before.t5.seq);
+    // One t5 escrow is locked, not two: the old one came back before the new one opened.
+    expect((await ledger.getBalances()).members.m5).toBe("200.00");
+    // The reset snapshot goes out first; the escrows follow as tab.updated escrow_opened.
+    const changes = ofType("tab.updated").map((e) => (e.data as { change: string }).change);
+    expect(changes.slice(changes.lastIndexOf("reset"))).toEqual(["reset", "escrow_opened", "escrow_opened"]);
+
+    service.exit("t1");
+    await runGrace(12);
+    expect(service.getTab("t1").status).toBe("settled");
+    expect(ledger.settleTab.mock.calls.at(-1)![0].tab.escrow.seq).toBe(service.getTab("t1").escrow.seq);
+  });
+
+  it.each([
+    ["the stub ledger", { ledgerMode: "stub", seedLiveEscrows: true }],
+    ["SEED_LIVE_ESCROWS unset", { ledgerMode: "module", seedLiveEscrows: false }],
+  ] as const)("opens nothing on reset with %s", async (_label, config) => {
+    const ledger = await stubLedger();
+    const { service } = makeService({ ledger, config });
+    await drain(service.reset());
+    expect(service.seedsLiveEscrows).toBe(false);
+    expect(ledger.openTab).not.toHaveBeenCalled();
+    expect(service.getTab("t1").escrow.txHash).toBeNull();
+  });
+
+  it("a second reset while one is running joins it instead of opening the escrows twice", async () => {
+    const ledger = await stubLedger();
+    const { service } = makeService({ ledger, config: live });
+    await drain(service.openSeedEscrows());
+    const first = service.reset();
+    const second = service.reset();
+    expect(second).toBe(first);
+    await drain(first);
+    expect(ledger.cancelTab).toHaveBeenCalledTimes(2);
+    expect(ledger.openTab).toHaveBeenCalledTimes(4);
+    expect((await ledger.getBalances()).members).toMatchObject({ m1: "4000.00", m5: "200.00" });
+  });
+
+  it("a reset during boot seeding waits for those escrows and cancels them", async () => {
+    const ledger = await stubLedger();
+    const { service } = makeService({ ledger, config: live });
+    const boot = service.openSeedEscrows();
+    await drain(Promise.all([boot, service.reset()]));
+    expect(ledger.cancelTab.mock.calls.map((c) => c[0].tab.id)).toEqual(["t1", "t5"]);
+    expect(ledger.openTab).toHaveBeenCalledTimes(4);
+    expect((await ledger.getBalances()).members).toMatchObject({ m1: "4000.00", m5: "200.00" });
+    expect(service.snapshot().tabs.filter((t) => t.escrow.txHash).map((t) => t.id)).toEqual(["t1", "t5"]);
   });
 });

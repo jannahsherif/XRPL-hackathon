@@ -15,7 +15,7 @@ export const config = {
   ledgerMode: (env.LEDGER_MODE ?? "stub") as "stub" | "module" | "ap4m",
   ledgerModule: env.LEDGER_MODULE ?? "../ledger/src/index.ts",
   ledgerStubDelayMs: Number(env.LEDGER_STUB_DELAY_MS ?? 3000),
-  /** Open real escrows for the six seeded tabs at boot (only with LEDGER_MODE=module). */
+  /** Open real escrows for the two stage tabs (t1, t5) at boot and after every reset (only with LEDGER_MODE=module). */
   seedLiveEscrows: env.SEED_LIVE_ESCROWS === "1",
   /** "local" uses the deterministic fallback; "agentcore" invokes the AgentCore Runtime. */
   agentMode: (env.AGENT_MODE ?? "local") as "local" | "agentcore",
