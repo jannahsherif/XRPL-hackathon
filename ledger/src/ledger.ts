@@ -91,7 +91,7 @@ export function createLedger(config: LedgerConfig = {}) {
   const urlFor = (hash: string) => explorerUrl(hash, explorerBase)
 
   // L3: escrow `allowance` from the member to the venue. Token escrows must expire, so CancelAfter
-  // is set to close of night; FinishAfter lets the venue claim it a few seconds after opening.
+  // is set to close of night; FinishAfter lets the venue claim it 20 s after opening.
   async function openTab({ memberId, allowance }: { memberId: string; allowance: string }): Promise<OpenTabResult> {
     memberAddress(accounts, memberId)
     assertAmount(allowance, 'allowance', { positive: true })
@@ -159,12 +159,16 @@ export function createLedger(config: LedgerConfig = {}) {
 
   // EscrowFinish only succeeds once a validated ledger has closed after FinishAfter. Ledger close
   // times have 10s resolution on testnet, so that can trail FinishAfter by up to ~10s.
+  // A tab exited early just waits here; it never fails for being early.
   async function waitForCloseAfter(rippleTime: number): Promise<void> {
     const giveUpAt = Date.now() + 60_000
+    let logged = false
     for (;;) {
       const next = conn.nextValidatedLedger(4_000)
       // Past the cap, submit anyway and let the ledger give the verdict.
       if ((await validatedCloseTime()) > rippleTime || Date.now() > giveUpAt) return
+      if (!logged) opts.log(`waiting for a validated ledger to close after FinishAfter ${rippleTimeToISOTime(rippleTime)}`)
+      logged = true
       await next
     }
   }

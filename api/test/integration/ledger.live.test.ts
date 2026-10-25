@@ -8,7 +8,7 @@
  * Runs the API with LEDGER_MODE=module and LEDGER_MODULE=../ledger/src/index.ts,
  * then drives tabs over HTTP: real EscrowCreate, EscrowFinish (+ refund Payment,
  * batched when possible) and cancel, checked against on-chain balances.
- * Each test takes 20-40 s (validation, plus FinishAfter ~5-15 s after open).
+ * Each test takes 35-55 s (validation, plus FinishAfter ~20-30 s after open).
  * Afterwards, `npm run demo:reset` in ledger/ restores balances.
  */
 import { existsSync } from "node:fs";
@@ -22,7 +22,7 @@ import { testConfig } from "../helpers.js";
 import { LEDGER_DIR, LEDGER_ENTRY } from "./ledgerKit.js";
 
 const LIVE = process.env.LEDGER_LIVE === "1" && existsSync(path.join(LEDGER_DIR, ".env"));
-const FINISH_AFTER_MARGIN_MS = 16_000; // FinishAfter = open + 5 s, close times round to 10 s
+const FINISH_AFTER_MARGIN_MS = 31_000; // FinishAfter = open + 20 s, close times round to 10 s
 const HASH = /^[0-9A-F]{64}$/;
 
 describe.skipIf(!LIVE)("ledger module on XRPL testnet, driven through the API", () => {
@@ -50,7 +50,7 @@ describe.skipIf(!LIVE)("ledger module on XRPL testnet, driven through the API", 
     return { tab, openedAt };
   }
 
-  /** Don't exit before FinishAfter has passed on a validated ledger (Alex: >= 15 s after open). */
+  /** Don't exit before FinishAfter has passed on a validated ledger (Alex: >= 30 s after open). */
   const waitFinishAfter = async (openedAt: number) => {
     const wait = openedAt + FINISH_AFTER_MARGIN_MS - Date.now();
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
