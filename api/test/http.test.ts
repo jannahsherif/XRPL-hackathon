@@ -140,6 +140,18 @@ describe("exit -> settle over HTTP", () => {
     expect((await get("/metrics")).json()).toMatchObject({ settledCount: 1, outstandingCents: 34218000 - 4560 });
   });
 
+  it("stores ledger amounts with 2 decimals (the real ledger trims trailing zeros)", async () => {
+    await built.app.close();
+    const settleTab = vi.fn(async () => ({ finishTxHash: "F", refundTxHash: "R", toVenue: "45.6", toMember: "554.4", elapsedMs: 1, explorerUrls: [] }));
+    await start({ ledger: fakeLedger({ settleTab }) });
+    const { id } = await openTab();
+    await post(`/tabs/${id}/items`, { menuItemId: "salmon" });
+    await post(`/tabs/${id}/exit`);
+    await new Promise((r) => setTimeout(r, 1300));
+    const tab = (await get("/state")).json().tabs.find((t: { id: string }) => t.id === id);
+    expect(tab.settlement).toMatchObject({ toVenue: "45.60", toMember: "554.40" });
+  });
+
   it("409 when exiting twice", async () => {
     const { id } = await openTab();
     await post(`/tabs/${id}/exit`);
@@ -208,6 +220,20 @@ describe("dispute / approve / reject / close", () => {
 
   it.each(["exit", "tip", "dispute", "approve", "reject", "close"])("%s is 404 for an unknown tab", async (action) => {
     expect((await post(`/tabs/ghost/${action}`, { pct: 10 })).statusCode).toBe(404);
+  });
+});
+
+describe("GET /balances", () => {
+  it("returns every amount with 2 decimals", async () => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ getBalances: vi.fn(async () => ({ venue: "99.4", members: { m1: "5000", m2: "800.5" } })) }) });
+    expect((await get("/balances")).json()).toEqual({ venue: "99.40", members: { m1: "5000.00", m2: "800.50" } });
+  });
+
+  it("passes non-amounts and extra fields through (AP4M mode)", async () => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ getBalances: vi.fn(async () => ({ venue: "n/a", members: {}, budgetRlusd: "20" })) }) });
+    expect((await get("/balances")).json()).toEqual({ venue: "n/a", members: {}, budgetRlusd: "20" });
   });
 });
 

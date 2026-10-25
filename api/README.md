@@ -129,7 +129,7 @@ Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or me
 
 Notes on the contract:
 
-- `allowance` is a decimal string in token units (`"600.00"`), the same units the ledger uses. Every `*Cents` field is an integer number of cents.
+- `allowance`, `settlement.toVenue`, `settlement.toMember` and every `/balances` amount are 2-decimal strings in token units (`"600.00"`, `"74.40"`), the same units the ledger uses; the API pads the ledger's trimmed values (`"74.4"`). Every `*Cents` field is an integer number of cents.
 - The tab object has exactly the fields in the contract. `tab.updated` is the one additive event type.
 - Outstanding balances start at $342,180.00 and drop by `toVenue` on every settle.
 

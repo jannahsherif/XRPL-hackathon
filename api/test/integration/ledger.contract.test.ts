@@ -195,7 +195,7 @@ describe("3. backend flows against the ledger contract (Alex's amount math + err
     expect(mod.settleTab).toHaveBeenCalledWith({ tab: { memberId: "member-1", escrowSeq: tab.escrow.seq, txHash: tab.escrow.txHash }, amount: "82.00", tipAmount: "16.40" });
     const settled = (await inject("GET", `/tabs/${tab.id}`)).json() as Tab;
     expect(settled.status).toBe("settled");
-    expect(settled.settlement).toMatchObject({ toVenue: "98.4", toMember: "901.6", mode: "batch", batchTxHash: expect.stringMatching(/^[0-9A-F]{64}$/), elapsedMs: 4200 });
+    expect(settled.settlement).toMatchObject({ toVenue: "98.40", toMember: "901.60", mode: "batch", batchTxHash: expect.stringMatching(/^[0-9A-F]{64}$/), elapsedMs: 4200 });
     expect(Date.parse(settled.settlement!.validatedAt!) - Date.parse(settled.settlement!.submittedAt!)).toBe(4200);
     expect((settledEvent.data as { settlement: Tab["settlement"] }).settlement).toMatchObject({ mode: "batch", submittedAt: expect.any(String), validatedAt: expect.any(String) });
     // Refund landed back with the member; outstanding dropped by what reached the venue.
@@ -214,7 +214,7 @@ describe("3. backend flows against the ledger contract (Alex's amount math + err
     expect(mod.settleTab).not.toHaveBeenCalled();
     const approved = (await inject("POST", `/tabs/${tab.id}/approve`)).json() as Tab;
     expect(mod.settleTab).toHaveBeenCalledWith(expect.objectContaining({ tab: expect.objectContaining({ memberId: "member-5" }), amount: "900.00", tipAmount: "100.00" }));
-    expect(approved.settlement).toMatchObject({ toVenue: "1000", toMember: "0", refundTxHash: null, mode: "sequential" });
+    expect(approved.settlement).toMatchObject({ toVenue: "1000.00", toMember: "0.00", refundTxHash: null, mode: "sequential" });
     expect(balances["member-5"]).toBe("200");
   }, 20_000);
 

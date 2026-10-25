@@ -11,6 +11,7 @@ import { Wallet } from "ethers";
 import { AP4M_CONTRACTS, AP4M_NETWORK } from "./ap4m/network.js";
 import { encodePaymentSignature } from "./ap4m/x402.js";
 import { loadLedger } from "./ledger/index.js";
+import { toTwoDecimals } from "./money.js";
 import { buildMastercardStack } from "./mastercard.js";
 import { verifyPaymentRecord, type PaymentRecord } from "./intent/mandate.js";
 import { SettleService } from "./settleService.js";
@@ -91,7 +92,11 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
   app.get("/metrics", async () => service.metrics());
 
   /** Ledger balances (venue + members) in token units, straight from the ledger module. */
-  app.get("/balances", async () => ledger.getBalances());
+  app.get("/balances", async () => {
+    const balances = await ledger.getBalances();
+    const members = Object.fromEntries(Object.entries(balances.members).map(([id, value]) => [id, toTwoDecimals(value)]));
+    return { ...balances, venue: toTwoDecimals(balances.venue), members };
+  });
 
   app.get("/policy", async () => service.snapshot().policy);
   app.patch<{ Body: Record<string, unknown> }>("/policy", staffOnly, async (req) => service.updatePolicy(req.body ?? {}));

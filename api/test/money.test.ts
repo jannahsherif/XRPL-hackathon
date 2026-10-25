@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { centsToDecimal, decimalToCents, tipCentsFor } from "../src/money.js";
+import { centsToDecimal, decimalToCents, tipCentsFor, toTwoDecimals } from "../src/money.js";
 
 describe("centsToDecimal", () => {
   it.each([
@@ -21,6 +21,20 @@ describe("centsToDecimal", () => {
   it("rounds fractional cents instead of emitting floats", () => {
     expect(centsToDecimal(1234.4)).toBe("12.34");
     expect(centsToDecimal(1234.6)).toBe("12.35");
+  });
+});
+
+describe("toTwoDecimals", () => {
+  it.each([
+    ["74.4", "74.40"],
+    ["925.6", "925.60"],
+    ["5000", "5000.00"],
+    ["0", "0.00"],
+    ["99.36", "99.36"],
+    ["1000.000000", "1000.00"],
+    ["n/a", "n/a"],
+  ])("%s -> %s", (value, expected) => {
+    expect(toTwoDecimals(value)).toBe(expected);
   });
 });
 

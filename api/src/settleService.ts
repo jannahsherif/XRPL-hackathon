@@ -4,7 +4,7 @@ import { paymentRecordHash, type IntentService } from "./intent/mandate.js";
 import type { Config } from "./config.js";
 import type { EventBus } from "./events.js";
 import { ledgerErrorCode } from "./ledger/index.js";
-import { centsToDecimal, decimalToCents, tipCentsFor } from "./money.js";
+import { centsToDecimal, decimalToCents, tipCentsFor, toTwoDecimals } from "./money.js";
 import { SEED_MEMBERS, SEED_MENU, SEED_POLICY, SEED_TABS } from "./seed.js";
 import { OPEN_STATUSES, assertTransition } from "./stateMachine.js";
 import type { AgentDecision, Ledger, Member, MenuItem, Metrics, Policy, Tab, TabStatus } from "./types.js";
@@ -349,8 +349,9 @@ export class SettleService {
       tab.settlement = {
         finishTxHash: result.finishTxHash,
         refundTxHash: result.refundTxHash,
-        toVenue: result.toVenue,
-        toMember: result.toMember,
+        // The ledger trims trailing zeros ("74.4"); the API always sends cents ("74.40").
+        toVenue: toTwoDecimals(result.toVenue),
+        toMember: toTwoDecimals(result.toMember),
         elapsedMs: result.elapsedMs,
         ...(result.submittedAt ? { submittedAt: result.submittedAt } : {}),
         ...(result.validatedAt ? { validatedAt: result.validatedAt } : {}),
