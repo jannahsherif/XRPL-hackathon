@@ -333,7 +333,7 @@ describe("3. backend flows against the ledger contract (Alex's amount math + err
     const { inject, waitFor } = await apiWith(adaptTeamLedger(mod));
     await inject("POST", "/tabs/t2/exit");
     await waitFor("tab.held", "t2");
-    expect((await inject("GET", "/tabs/t2")).json().hold.reason).toMatch(/ESCROW_NOT_FOUND/);
+    expect((await inject("GET", "/tabs/t2")).json().hold).toMatchObject({ source: "ledger", code: "ESCROW_NOT_FOUND" });
     expect(mod.settleTab).not.toHaveBeenCalled();
   });
 

@@ -12,7 +12,7 @@ Liam's layer (Epic 2): one service that owns the tab state machine, fakes the PO
 | Feature | Turn on | Routes and events |
 |---|---|---|
 | **AP4M settlement rail**: a Channel per tab (cap = allowance), x402 + EIP-712 Voucher, RLUSD settle and close | `LEDGER_MODE=ap4m`, `AP4M_NETWORK=simulated \| live` | `GET /ap4m`, `GET /x402/tabs/:id/resource`, `POST /demo/ap4m/over-cap/:id`, `POST /demo/ap4m/unverified-agent/:id`; events `ap4m.channel_opened`, `x402.payment_required`, `x402.paid`, `ap4m.settled`, `ap4m.rejected` |
-| **Verifiable Intent**: member-signed mandate per tab, checked before every payment | `INTENT_MODE=on` (default) | `GET /intent/tabs/:id`, `POST /intent/verify-payment-record`; events `intent.mandate_signed`, `intent.verified`, `intent.violation` |
+| **Verifiable Intent**: member-signed mandate per tab, checked before every payment | `INTENT_MODE=on` (default `off`, which is how the demo runs; the AWS deploy passes `on` unless the `INTENT_MODE` repository variable says otherwise) | `GET /intent/tabs/:id`, `POST /intent/verify-payment-record`; events `intent.mandate_signed`, `intent.verified`, `intent.violation` |
 | **Card funding** (SIMULATED): top up from the Mastercard card on file | always | `POST /members/:id/fund {amountCents}`; event `funding.completed` |
 
 Tabs gain two additive fields, `mandate` and `ap4m`. Both are null when their feature is off. Members gain `card` and `fundedCents`.
@@ -57,7 +57,7 @@ Then open `http://localhost:8080/state` and stream `curl -N http://localhost:808
 | `AGENT_MODE` | `local` | `agentcore` calls the deployed settlement agent (`AGENT_RUNTIME_ARN`, `AGENT_QUALIFIER=live`) |
 | `AGENT_TIMEOUT_MS` | `8000` | After this, the deterministic fallback decides |
 | `CORS_ORIGIN` | `*` | Comma-separated origins for the frontend |
-| `STAFF_TOKEN` | unset | Staff routes (approve, reject, close, `PATCH /policy`, fund, `/demo/reset`) need it as the `X-Staff-Token` header; unset leaves them open and logs a warning at boot |
+| `STAFF_TOKEN` | unset | Staff routes (approve, reject, close, `PATCH /policy`, fund, `/demo/reset`) need it as the `X-Staff-Token` header. Locally, unset leaves them open and logs a warning at boot; on AWS (ECS sets `AWS_EXECUTION_ENV`) the API refuses to start without it |
 
 See [.env.example](.env.example).
 
@@ -123,7 +123,7 @@ Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or me
 | `member.push` | `{tabId, memberId, memberName, items, totalCents, suggestedTipPct, tipOptions, graceEndsAt, secondsLeft}` |
 | `tab.grace_tick` | `{tabId, secondsLeft}`, once a second down to `0`, which arrives just before `reconciling` |
 | `agent.decision` | `{tabId, action, tipPct, reason, source: rules \| agent \| fallback}` |
-| `tab.held` | `{tab, hold}` |
+| `tab.held` | `{tab, hold}`. `hold` is `{reason, triggeredAt, source, code}`: `source` is `rules`, `agent`, `member`, `intent` or `ledger`; `code` is `ITEM_OVER_ALLOWANCE`, `OVER_TYPICAL_SPEND`, `OVER_ALLOWANCE` (rules), `AGENT_HOLD`, `DISPUTED`, `INTENT_VIOLATION`, or the ledger's error code (`LEDGER_TIMEOUT`, `ESCROW_NOT_FOUND`, …) |
 | `tab.settled` | `{tab, settlement, explorerUrls, decision}` |
 | `metrics.updated` | `{outstandingCents, openTabs, settledCount, avgSettleMs}` |
 | `tab.updated` *(additive)* | `{tab, change}` for reconciling, tip, close, reset and escrow_opened |
@@ -166,7 +166,7 @@ gh release create v0.1.0 --target main --generate-notes                        #
 
 Or use **Releases → Draft a new release** in GitHub; tick "Set as a pre-release" for `dev`. Drafts don't deploy until they are published. The release tag versions the agent zip (`agent/<stage>/<tag>.zip`) and the image (`settle-api:<tag>`), so redeploying an older release rolls back. The job summary prints the HTTPS API URL. The first deploy takes about 10–15 minutes because CloudFront is created. To require approval before `prod`, add required reviewers to the `prod` environment under Settings → Environments.
 
-**Ledger keys and staff token:** store the ledger module's seeds and `STAFF_TOKEN` in one secret (the task expands it into its environment), then switch modes:
+**Ledger keys and staff token:** store the ledger module's seeds and `STAFF_TOKEN` in one secret (the task expands it into its environment), then switch modes. The task refuses to start without `STAFF_TOKEN`, so set it before publishing a release:
 
 ```bash
 aws secretsmanager put-secret-value --secret-id settle/dev/ledger-env \

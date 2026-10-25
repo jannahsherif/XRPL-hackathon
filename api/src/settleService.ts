@@ -7,7 +7,7 @@ import { ledgerErrorCode } from "./ledger/index.js";
 import { centsToDecimal, decimalToCents, tipCentsFor, toTwoDecimals } from "./money.js";
 import { SEED_MEMBERS, SEED_MENU, SEED_POLICY, SEED_TABS } from "./seed.js";
 import { OPEN_STATUSES, assertTransition } from "./stateMachine.js";
-import type { AgentDecision, Escrow, Ledger, LedgerErrorCode, Member, MenuItem, Metrics, OpenTabResult, Policy, Tab, TabStatus } from "./types.js";
+import type { AgentDecision, Escrow, Hold, Ledger, LedgerErrorCode, Member, MenuItem, Metrics, OpenTabResult, Policy, Tab, TabStatus } from "./types.js";
 
 const LEDGER_CODES = new Set<string>(["INSUFFICIENT_FUNDS", "ESCROW_NOT_FOUND", "LEDGER_TIMEOUT", "LEDGER_REJECTED", "INVALID_INPUT"] satisfies LedgerErrorCode[]);
 
@@ -209,7 +209,7 @@ export class SettleService {
     }
     this.clearTimer(tab.id);
     this.decisions.delete(tab.id);
-    this.hold(tab, note ? `Member disputed: ${note}` : "Member disputed the tab");
+    this.hold(tab, note ? `Member disputed: ${note}` : "Member disputed the tab", "member", "DISPUTED");
     return tab;
   }
 
@@ -317,7 +317,7 @@ export class SettleService {
     this.bus.publish("agent.decision", { tabId: tab.id, ...decision });
 
     if (decision.action === "hold") {
-      this.hold(tab, decision.reason);
+      this.hold(tab, decision.reason, decision.source, decision.code ?? "AGENT_HOLD");
       return;
     }
     await this.settle(tab, decision);
@@ -327,7 +327,7 @@ export class SettleService {
     if (tab.status !== "reconciling") this.move(tab, "reconciling");
     const allowanceCents = decimalToCents(tab.allowance);
     if (tab.totalCents > allowanceCents) {
-      this.hold(tab, `Total $${centsToDecimal(tab.totalCents)} is above the escrowed $${tab.allowance}; settle the difference manually`);
+      this.hold(tab, `Total $${centsToDecimal(tab.totalCents)} is above the escrowed $${tab.allowance}; settle the difference manually`, "rules", "OVER_ALLOWANCE");
       return;
     }
     const tipPct = this.memberTipPct.get(tab.id) ?? decision.tipPct;
@@ -341,7 +341,7 @@ export class SettleService {
       if (!check.ok) {
         if (tab.mandate) tab.mandate.status = "violated";
         this.bus.publish("intent.violation", { tabId: tab.id, violations: check.violations });
-        this.hold(tab, `Verifiable Intent check failed: ${check.violations.join("; ")}`);
+        this.hold(tab, `Verifiable Intent check failed: ${check.violations.join("; ")}`, "intent", "INTENT_VIOLATION");
         return;
       }
       tab.mandate!.paymentRecordHash = paymentRecordHash(check.record!);
@@ -373,13 +373,14 @@ export class SettleService {
       this.bus.publish("tab.settled", { tab, settlement: tab.settlement, explorerUrls: result.explorerUrls, decision });
       this.publishMetrics();
     } catch (err) {
-      this.hold(tab, `Ledger error (${ledgerErrorCode(err)}): ${(err as Error).message}`);
+      // A ledger failure after a settle decision: the hold says so in source and code, not only in prose.
+      this.hold(tab, `Ledger error (${ledgerErrorCode(err)}): ${(err as Error).message}`, "ledger", ledgerErrorCode(err));
     }
   }
 
-  private hold(tab: Tab, reason: string): void {
+  private hold(tab: Tab, reason: string, source: Hold["source"], code: string): void {
     this.move(tab, "held");
-    tab.hold = { reason, triggeredAt: new Date().toISOString() };
+    tab.hold = { reason, triggeredAt: new Date().toISOString(), source, code };
     this.bus.publish("tab.held", { tab, hold: tab.hold });
     this.publishMetrics();
   }

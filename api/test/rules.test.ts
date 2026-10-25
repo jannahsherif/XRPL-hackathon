@@ -40,6 +40,13 @@ const policy = (overrides: Partial<Policy> = {}): Policy => ({ ...SEED_POLICY, .
 const line = (priceCents: number, qty = 1, name = "Item") => ({ name, qty, priceCents });
 
 describe("applyHardRules", () => {
+  it("tags each hold with the rule that fired", () => {
+    const rich = member({ typicalSpendCents: 500000 });
+    expect(applyHardRules(tab([line(90000)], { allowance: "300.00" }), rich, policy())?.code).toBe("ITEM_OVER_ALLOWANCE");
+    expect(applyHardRules(tab([line(10000, 4)], { allowance: "300.00" }), rich, policy())?.code).toBe("OVER_ALLOWANCE");
+    expect(applyHardRules(tab([line(90000)]), member(), policy())?.code).toBe("OVER_TYPICAL_SPEND");
+  });
+
   it("lets a normal tab through to the agent", () => {
     expect(applyHardRules(tab([line(2600), line(1900, 2)]), member(), policy())).toBeNull();
   });

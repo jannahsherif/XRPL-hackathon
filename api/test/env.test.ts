@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { requireStaffTokenOnAws } from "../src/config.js";
 import { expandLedgerEnv } from "../src/env.js";
 
 describe("expandLedgerEnv", () => {
@@ -35,6 +36,14 @@ describe("expandLedgerEnv", () => {
   });
 });
 
+describe("requireStaffTokenOnAws", () => {
+  it("refuses an unset STAFF_TOKEN on AWS only", () => {
+    expect(() => requireStaffTokenOnAws({ staffToken: "" }, { AWS_EXECUTION_ENV: "AWS_ECS_FARGATE" })).toThrow(/STAFF_TOKEN is required on AWS/);
+    expect(() => requireStaffTokenOnAws({ staffToken: "s3cret" }, { AWS_EXECUTION_ENV: "AWS_ECS_FARGATE" })).not.toThrow();
+    expect(() => requireStaffTokenOnAws({ staffToken: "" }, {})).not.toThrow();
+  });
+});
+
 describe("config", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -43,10 +52,12 @@ describe("config", () => {
 
   const load = async () => (await import("../src/config.js")).config;
 
-  it("defaults to demo off, stub ledger, local agent and a 120 s grace", async () => {
+  it("defaults to demo off, stub ledger, local agent, intent off and a 120 s grace", async () => {
     vi.stubEnv("DEMO", "");
     vi.stubEnv("GRACE_SECONDS", undefined as unknown as string);
+    vi.stubEnv("INTENT_MODE", undefined as unknown as string);
     const config = await load();
+    expect(config.intentMode).toBe("off");
     expect(config.demo).toBe(false);
     expect(config.graceSeconds).toBe(120);
     expect(config.ledgerMode).toBe("stub");

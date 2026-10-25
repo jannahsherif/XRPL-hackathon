@@ -11,7 +11,7 @@ export function applyHardRules(tab: Tab, member: Member, policy: Policy): AgentD
   if (policy.holdIfItemOverAllowance) {
     const over = tab.items.find((item) => item.priceCents > allowanceCents);
     if (over) {
-      return hold(`${over.name} ($${dollars(over.priceCents)}) is above the escrowed allowance of $${tab.allowance}`, policy);
+      return hold("ITEM_OVER_ALLOWANCE", `${over.name} ($${dollars(over.priceCents)}) is above the escrowed allowance of $${tab.allowance}`, policy);
     }
   }
 
@@ -19,6 +19,7 @@ export function applyHardRules(tab: Tab, member: Member, policy: Policy): AgentD
   if (member.typicalSpendCents > 0 && tab.totalCents > limit) {
     const biggest = [...tab.items].sort((a, b) => b.priceCents * b.qty - a.priceCents * a.qty)[0];
     return hold(
+      "OVER_TYPICAL_SPEND",
       `Tab total $${dollars(tab.totalCents)} is over ${policy.holdIfTotalOverTypicalX}x ${member.name.split(" ")[0]}'s typical $${dollars(member.typicalSpendCents)}` +
         (biggest ? `; largest line is ${biggest.name}` : ""),
       policy,
@@ -26,7 +27,7 @@ export function applyHardRules(tab: Tab, member: Member, policy: Policy): AgentD
   }
 
   if (tab.totalCents > allowanceCents) {
-    return hold(`Tab total $${dollars(tab.totalCents)} exceeds the escrowed allowance of $${tab.allowance}`, policy);
+    return hold("OVER_ALLOWANCE", `Tab total $${dollars(tab.totalCents)} exceeds the escrowed allowance of $${tab.allowance}`, policy);
   }
 
   return null;
@@ -44,8 +45,8 @@ export function fallbackDecision(tab: Tab, policy: Policy): AgentDecision {
   };
 }
 
-function hold(reason: string, policy: Policy): AgentDecision {
-  return { action: "hold", tipPct: policy.defaultTipPct, reason, source: "rules" };
+function hold(code: string, reason: string, policy: Policy): AgentDecision {
+  return { action: "hold", tipPct: policy.defaultTipPct, reason, source: "rules", code };
 }
 
 function dollars(cents: number): string {
