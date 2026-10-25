@@ -21,6 +21,9 @@ export interface Escrow {
   seq: number | null;
   txHash: string | null;
   explorerUrl: string | null;
+  /** Additive (ledger): when the EscrowCreate was submitted and when it was validated (ISO 8601). */
+  submittedAt?: string;
+  validatedAt?: string;
 }
 
 export interface Settlement {
@@ -29,6 +32,8 @@ export interface Settlement {
   toVenue: string;
   toMember: string;
   elapsedMs: number;
+  /** Additive: explorer links for the finish, the refund (if any) and the Batch (if batched). */
+  explorerUrls: string[];
   /** Additive (ledger): when the first transaction was submitted and when the last was validated (ISO 8601). */
   submittedAt?: string;
   validatedAt?: string;
@@ -188,6 +193,8 @@ export interface OpenTabResult {
   txHash: string;
   explorerUrl: string | null;
   ledgerIndex: number;
+  submittedAt?: string;
+  validatedAt?: string;
   ap4m?: Omit<Ap4mTabInfo, "payment">;
 }
 

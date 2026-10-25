@@ -181,6 +181,21 @@ describe("3. backend flows against the ledger contract (Alex's amount math + err
     }
   }, 30_000);
 
+  it("/state keeps settlement.explorerUrls and the open's escrow timestamps, not just the events", async () => {
+    const { mod } = await contractLedger({ finishAfterMs: 300 });
+    const { inject, waitFor } = await apiWith(adaptTeamLedger(mod));
+    const opened = (await inject("POST", "/tabs", { memberId: "m2" })).json() as Tab;
+    expect(opened.escrow).toMatchObject({ submittedAt: expect.any(String), validatedAt: expect.any(String) });
+    await inject("POST", `/tabs/${opened.id}/items`, { menuItemId: "steak" });
+    await inject("POST", `/tabs/${opened.id}/exit`);
+    const event = (await waitFor("tab.settled", opened.id)).data as { explorerUrls: string[] };
+
+    const tab = ((await inject("GET", "/state")).json() as { tabs: Tab[] }).tabs.find((t) => t.id === opened.id)!;
+    expect(tab.settlement!.explorerUrls).toEqual(event.explorerUrls);
+    expect(tab.settlement!.explorerUrls).toContain(`https://testnet.xrpl.org/transactions/${tab.settlement!.finishTxHash}`);
+    expect(tab.escrow).toEqual(opened.escrow);
+  });
+
   it("happy path over HTTP: member-N ids, top-level escrowSeq, and settlement timing pass through", async () => {
     const { mod, balances } = await contractLedger({ finishAfterMs: 300 });
     const { inject, waitFor } = await apiWith(adaptTeamLedger(mod));

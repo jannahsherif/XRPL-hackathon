@@ -77,7 +77,8 @@ How the API maps onto the ledger module ([src/ledger/teamLedger.ts](src/ledger/t
 | member ids `m1`–`m5` | `member-1`–`member-5` (`ledger/accounts.json`) |
 | `tab.escrow.seq` | top-level `{ memberId, escrowSeq }` on settle and cancel |
 | `amount` = tab total, `tipAmount` = tip | refund = allowance − amount − tip; spending past the allowance throws `INSUFFICIENT_FUNDS` (the hold rules catch it first) |
-| `tab.settlement` | also carries `submittedAt`, `validatedAt`, `mode` (`batch` or `sequential`) and `batchTxHash` |
+| `tab.settlement` | also carries `explorerUrls`, `submittedAt`, `validatedAt`, `mode` (`batch` or `sequential`) and `batchTxHash` |
+| `tab.escrow` | also carries the EscrowCreate's `submittedAt` and `validatedAt` |
 
 - **Seeded escrows:** `SEED_LIVE_ESCROWS=1` opens real escrows only for the two stage tabs, `t1` (m1's demo tab) and `t5` (m5's anomaly tab). The other four stay display-only (`seq: null`) and hold with `ESCROW_NOT_FOUND` if exited.
 - **Timing:** `openTab` takes 3–6 s, and settling waits for FinishAfter (up to about 15 s after open) plus 3.5–7 s to validation. Don't exit a tab within 15 s of opening it.
@@ -131,6 +132,7 @@ Notes on the contract:
 
 - `allowance`, `settlement.toVenue`, `settlement.toMember` and every `/balances` amount are 2-decimal strings in token units (`"600.00"`, `"74.40"`), the same units the ledger uses; the API pads the ledger's trimmed values (`"74.4"`). Every `*Cents` field is an integer number of cents.
 - The tab object has exactly the fields in the contract. `tab.updated` is the one additive event type.
+- Everything a settled tab shows is on the tab itself, so `GET /state` after a reload has it: `settlement.explorerUrls` (finish, refund if any, Batch if batched), `settlement.submittedAt`/`validatedAt`, and the open's `escrow.submittedAt`/`validatedAt` (module mode; the stub omits the timestamps).
 - Outstanding balances start at $342,180.00 and drop by `toVenue` on every settle.
 
 ## Deploy to AWS

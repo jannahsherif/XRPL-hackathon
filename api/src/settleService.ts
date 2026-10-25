@@ -7,7 +7,7 @@ import { ledgerErrorCode } from "./ledger/index.js";
 import { centsToDecimal, decimalToCents, tipCentsFor, toTwoDecimals } from "./money.js";
 import { SEED_MEMBERS, SEED_MENU, SEED_POLICY, SEED_TABS } from "./seed.js";
 import { OPEN_STATUSES, assertTransition } from "./stateMachine.js";
-import type { AgentDecision, Ledger, Member, MenuItem, Metrics, Policy, Tab, TabStatus } from "./types.js";
+import type { AgentDecision, Escrow, Ledger, Member, MenuItem, Metrics, OpenTabResult, Policy, Tab, TabStatus } from "./types.js";
 
 export class NotFoundError extends Error {
   readonly statusCode = 404;
@@ -116,7 +116,7 @@ export class SettleService {
       totalCents: 0,
       tipCents: 0,
       allowance: member.allowance,
-      escrow: { seq: escrow.escrowSeq, txHash: escrow.txHash, explorerUrl: escrow.explorerUrl },
+      escrow: escrowOf(escrow),
       settlement: null,
       hold: null,
       graceEndsAt: null,
@@ -268,7 +268,7 @@ export class SettleService {
       if (tab.escrow.txHash || !live.has(tab.id)) continue;
       try {
         const escrow = await this.ledger.openTab({ memberId: tab.memberId, allowance: tab.allowance });
-        tab.escrow = { seq: escrow.escrowSeq, txHash: escrow.txHash, explorerUrl: escrow.explorerUrl };
+        tab.escrow = escrowOf(escrow);
         if (escrow.ap4m) tab.ap4m = { ...escrow.ap4m, payment: null };
         this.bus.publish("tab.updated", { tab, change: "escrow_opened" });
       } catch (err) {
@@ -353,6 +353,7 @@ export class SettleService {
         toVenue: toTwoDecimals(result.toVenue),
         toMember: toTwoDecimals(result.toMember),
         elapsedMs: result.elapsedMs,
+        explorerUrls: result.explorerUrls,
         ...(result.submittedAt ? { submittedAt: result.submittedAt } : {}),
         ...(result.validatedAt ? { validatedAt: result.validatedAt } : {}),
         ...(result.mode ? { mode: result.mode } : {}),
@@ -463,6 +464,16 @@ function assertTransitionOrThrow(from: TabStatus, to: TabStatus): void {
   } catch (err) {
     throw new ConflictError((err as Error).message);
   }
+}
+
+function escrowOf(opened: OpenTabResult): Escrow {
+  return {
+    seq: opened.escrowSeq,
+    txHash: opened.txHash,
+    explorerUrl: opened.explorerUrl,
+    ...(opened.submittedAt ? { submittedAt: opened.submittedAt } : {}),
+    ...(opened.validatedAt ? { validatedAt: opened.validatedAt } : {}),
+  };
 }
 
 function totalOf(tab: Tab): number {
