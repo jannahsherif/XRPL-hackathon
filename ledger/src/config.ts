@@ -41,6 +41,13 @@ export const SEED_BALANCES: Record<string, string> = {
 
 export const TRUST_LIMIT = '1000000'
 
+// L7: membership is an XRPL Credential from our issuer to the member, of this type, accepted by the
+// member. openTab refuses anyone without one. On the ledger CredentialType is a hex blob.
+export const CREDENTIAL_TYPE = 'CLUB_MEMBER'
+export const CREDENTIAL_TYPE_HEX = Buffer.from(CREDENTIAL_TYPE, 'utf8').toString('hex').toUpperCase()
+// openTab trusts a confirmed credential for this long before looking it up again.
+export const CREDENTIAL_CACHE_MS = 60_000
+
 export const TAB_DEFAULTS = {
   // rippled rejects an EscrowCreate whose FinishAfter isn't after the parent ledger's close time
   // (tecNO_PERMISSION). A transaction lands 3.5-7 s after submit and close times round to 10 s,

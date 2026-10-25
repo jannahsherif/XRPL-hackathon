@@ -52,6 +52,12 @@ describe("stub ledger (contract-identical)", () => {
     await expect(ledger.openTab({ memberId: "m1", allowance: "500.00" })).rejects.toMatchObject({ code: "INSUFFICIENT_FUNDS" });
   });
 
+  it("refuses a member it does not credential (L7) and reports credentials", async () => {
+    const ledger = createStubLedger(0, { m1: "1000.00" });
+    await expect(ledger.openTab({ memberId: "m6", allowance: "300.00" })).rejects.toMatchObject({ code: "INVALID_INPUT", message: "member is not credentialed" });
+    expect((await ledger.getBalances()).credentialed).toEqual({ m1: true });
+  });
+
   it("locks the allowance out of the member balance while the tab is open", async () => {
     const ledger = createStubLedger(0, { m1: "1000.00" });
     await ledger.openTab({ memberId: "m1", allowance: "600.00" });

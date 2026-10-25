@@ -13,6 +13,7 @@ const member = (overrides: Partial<Member> = {}): Member => ({
   history: [],
   card: { brand: "Mastercard", last4: "0000", srcDigitalCardId: "MVCT" },
   fundedCents: 0,
+  credentialed: true,
   ...overrides,
 });
 

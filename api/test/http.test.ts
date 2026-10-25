@@ -252,6 +252,37 @@ describe("dispute / approve / reject / close", () => {
   });
 });
 
+describe("credentials (L7)", () => {
+  it("/state says who is credentialed: m1-m5, not m6", async () => {
+    const members = (await get("/state")).json().members as { id: string; credentialed: boolean }[];
+    expect(Object.fromEntries(members.map((m) => [m.id, m.credentialed]))).toEqual({ m1: true, m2: true, m3: true, m4: true, m5: true, m6: false });
+  });
+
+  it("POST /tabs for an uncredentialed member is 403 NOT_CREDENTIALED and never reaches the ledger", async () => {
+    await built.app.close();
+    const ledger = fakeLedger();
+    await start({ ledger });
+    const res = await post("/tabs", { memberId: "m6" });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: "Casey Moreau is not a credentialed member", code: "NOT_CREDENTIALED" });
+    expect(ledger.openTab).not.toHaveBeenCalled();
+  });
+
+  it("maps the ledger's refusal (a credential revoked since boot) to 403 and marks the member", async () => {
+    await built.app.close();
+    const refuse = vi.fn().mockRejectedValue(Object.assign(new Error("member is not credentialed"), { code: "INVALID_INPUT" }));
+    await start({ ledger: fakeLedger({ openTab: refuse }) });
+    expect((await post("/tabs", { memberId: "m4" })).json()).toMatchObject({ code: "NOT_CREDENTIALED" });
+    expect((await get("/state")).json().members.find((m: { id: string }) => m.id === "m4").credentialed).toBe(false);
+  });
+
+  it("re-checks a member last seen uncredentialed, so a re-issued credential counts at once", async () => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ getBalances: vi.fn(async () => ({ venue: "0", members: {}, credentialed: { m6: true } })) }) });
+    expect((await post("/tabs", { memberId: "m6" })).statusCode).toBe(201);
+  });
+});
+
 describe("GET /balances", () => {
   it("returns every amount with 2 decimals", async () => {
     await built.app.close();

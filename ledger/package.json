@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "setup:token": "tsx scripts/issue-token.ts",
     "demo:happy-path": "tsx scripts/demo-happy-path.ts",
-    "demo:reset": "tsx scripts/demo-reset.ts"
+    "demo:reset": "tsx scripts/demo-reset.ts",
+    "setup:credentials": "tsx scripts/setup-credentials.ts",
+    "revoke:credential": "tsx scripts/revoke-credential.ts"
   },
   "engines": {
     "node": ">=20.12"

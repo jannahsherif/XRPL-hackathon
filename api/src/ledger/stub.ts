@@ -13,12 +13,15 @@ const fakeHash = () => randomBytes(32).toString("hex").toUpperCase();
  */
 export function createStubLedger(delayMs: number, members: Record<string, string>): Ledger {
   const balances = new Map(Object.entries(members).map(([id, bal]) => [id, decimalToCents(bal)]));
+  // Like the testnet accounts: every funded member holds a CLUB_MEMBER credential, nobody else does.
+  const credentialed = new Set(balances.keys());
   let venueCents = 0;
   let seq = 1000;
 
   return {
     async openTab({ memberId, allowance }) {
       await sleep(delayMs);
+      if (!credentialed.has(memberId)) throw Object.assign(new Error("member is not credentialed"), { code: "INVALID_INPUT" });
       const cents = decimalToCents(allowance);
       const balance = balances.get(memberId) ?? 0;
       if (balance < cents) throw Object.assign(new Error("Member balance below allowance"), { code: "INSUFFICIENT_FUNDS" });
@@ -66,6 +69,7 @@ export function createStubLedger(delayMs: number, members: Record<string, string
       return {
         venue: centsToDecimal(venueCents),
         members: Object.fromEntries([...balances].map(([id, cents]) => [id, centsToDecimal(cents)])),
+        credentialed: Object.fromEntries([...credentialed].map((id) => [id, true])),
       };
     },
   };
