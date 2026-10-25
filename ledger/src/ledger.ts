@@ -3,6 +3,7 @@ import { BatchFlags, GlobalFlags, isoTimeToRippleTime, rippleTimeToISOTime } fro
 import { trustLineBalance } from './admin.ts'
 import { assertAmount, isZero, refundFor, sub } from './amounts.ts'
 import { SUBMIT_DEFAULTS, TAB_DEFAULTS, TESTNET, TOKEN, type TokenName, resolveToken } from './config.ts'
+import { credentialChecker, ledgerCredentialLookup } from './credentials.ts'
 import { LedgerError } from './errors.ts'
 import { RUNTIME_ROLES, loadAccounts, loadWallets, memberAddress, wsUrl } from './keys.ts'
 import { type SubmitOptions, type Submitted, connect, submitTx } from './submit.ts'
@@ -63,7 +64,8 @@ export type CancelTabResult = {
   via: 'EscrowCancel' | 'refund'
 }
 
-export type Balances = { venue: string; members: Record<string, string> }
+// credentialed: whether each member holds an accepted CLUB_MEMBER credential (L7).
+export type Balances = { venue: string; members: Record<string, string>; credentialed: Record<string, boolean> }
 
 export function explorerUrl(hash: string, explorerBase = TESTNET.explorerBase): string {
   return `${explorerBase}/transactions/${hash}`
@@ -89,12 +91,15 @@ export function createLedger(config: LedgerConfig = {}) {
 
   const tokenAmount = (value: string) => ({ currency: token.currency, issuer: token.issuer, value })
   const urlFor = (hash: string) => explorerUrl(hash, explorerBase)
+  const credentials = credentialChecker(ledgerCredentialLookup(() => conn.ready(), accounts.issuer))
 
   // L3: escrow `allowance` from the member to the venue. Token escrows must expire, so CancelAfter
   // is set to close of night; FinishAfter lets the venue claim it 20 s after opening.
   async function openTab({ memberId, allowance }: { memberId: string; allowance: string }): Promise<OpenTabResult> {
-    memberAddress(accounts, memberId)
+    const address = memberAddress(accounts, memberId)
     assertAmount(allowance, 'allowance', { positive: true })
+    // L7: only a credentialed member can open a tab.
+    await credentials.assertCredentialed(address)
     const member = wallets.get(memberId)!
     const now = Date.now()
     const finishAfter = isoTimeToRippleTime(new Date(now + finishAfterSeconds * 1000).toISOString())
@@ -290,7 +295,8 @@ export function createLedger(config: LedgerConfig = {}) {
     return { txHash: refundTxHash!, explorerUrl: urlFor(refundTxHash!), via: 'refund' }
   }
 
-  // L6: trust-line balances in the tab token. Tokens locked in open tabs are not included.
+  // L6: trust-line balances in the tab token (tokens locked in open tabs are not included), plus
+  // each member's credential status, looked up fresh.
   async function getBalances(): Promise<Balances> {
     const client = await conn.ready()
     const balanceOf = async (address: string) => (await trustLineBalance(client, address, token)) ?? '0'
@@ -299,7 +305,12 @@ export function createLedger(config: LedgerConfig = {}) {
       balanceOf(venue.address),
       ...ids.map((id) => balanceOf(accounts.members[id])),
     ])
-    return { venue: venueBalance, members: Object.fromEntries(ids.map((id, i) => [id, memberBalances[i]])) }
+    const credentialed = await Promise.all(ids.map((id) => credentials.refresh(accounts.members[id])))
+    return {
+      venue: venueBalance,
+      members: Object.fromEntries(ids.map((id, i) => [id, memberBalances[i]])),
+      credentialed: Object.fromEntries(ids.map((id, i) => [id, credentialed[i]])),
+    }
   }
 
   return {
