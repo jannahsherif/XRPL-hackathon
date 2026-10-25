@@ -386,6 +386,19 @@ describe("hold path", () => {
     expect(tab.status).toBe("settled");
   });
 
+  it("approve announces reconciling before the ledger settles", async () => {
+    const { service, ofType } = makeService({ agent: fixedAgent({ action: "hold" }) });
+    const tab = await service.openTab("m5");
+    service.addItem(tab.id, "bottle-900");
+    service.exit(tab.id);
+    await runGrace();
+    const before = ofType("tab.updated").length;
+    const approving = service.approve(tab.id);
+    expect(ofType("tab.updated").slice(before).map((e) => (e.data as { change: string }).change)).toEqual(["reconciling"]);
+    await approving;
+    expect(tab.status).toBe("settled");
+  });
+
   it("approve keeps a tab held if its items alone exceed the escrow", async () => {
     const { service, ledger } = makeService({ agent: fixedAgent({ action: "hold" }) });
     const tab = await service.openTab("m4"); // $300

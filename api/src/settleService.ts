@@ -353,7 +353,11 @@ export class SettleService {
   }
 
   private async settle(tab: Tab, decision: AgentDecision): Promise<void> {
-    if (tab.status !== "reconciling") this.move(tab, "reconciling");
+    // Approve arrives from held: announce reconciling at once, as reconcile() does, so screens leave "Held".
+    if (tab.status !== "reconciling") {
+      this.move(tab, "reconciling");
+      this.bus.publish("tab.updated", { tab, change: "reconciling" });
+    }
     const allowanceCents = decimalToCents(tab.allowance);
     if (tab.totalCents > allowanceCents) {
       this.hold(tab, `Total $${centsToDecimal(tab.totalCents)} is above the escrowed $${tab.allowance}; settle the difference manually`, "rules", "OVER_ALLOWANCE");
