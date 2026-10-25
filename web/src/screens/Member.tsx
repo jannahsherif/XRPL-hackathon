@@ -65,7 +65,8 @@ function TabNotification({ tab, now }: { tab: Tab; now: number }) {
   if (inGrace(tab) || tab.status === "reconciling") {
     return (
       <>
-        <PushCard tab={tab} seconds={graceLeft(tab, m, now)} />
+        {/* Keyed by tab: a second tab's push must not inherit the first one's tip or dispute state. */}
+        <PushCard key={tab.id} tab={tab} seconds={graceLeft(tab, m, now)} />
         <GeofenceNote />
       </>
     );
