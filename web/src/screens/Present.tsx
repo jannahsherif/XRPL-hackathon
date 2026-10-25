@@ -60,7 +60,7 @@ export function Present() {
     return () => window.removeEventListener("keydown", onKey);
   }, [reset]);
 
-  // The member phone follows the first tab to leave (memberFocus), else a tab already in grace; until then it's idle.
+  // The member phone follows the latest tab opened, ordered on or exited (memberFocus), else a tab already in grace.
   const tabs = [...(state?.tabs ?? [])].sort(byOpenedDesc);
   const memberTab = memberFocus ?? tabs.find((t) => inGrace(t) || t.status === "reconciling")?.id ?? null;
   const memberName = tabs.find((t) => t.id === memberTab)?.memberName;

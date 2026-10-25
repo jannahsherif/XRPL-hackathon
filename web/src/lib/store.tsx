@@ -36,7 +36,7 @@ interface Store {
   /** Server time of the last snapshot; replayed events are older than this. */
   snapshotAt: string | null;
   lastSettled: SettledNotice | null;
-  /** Tab the member phone follows: the first one to emit exit_detected, until its settle is over. */
+  /** Tab the member phone follows: the latest opened, ordered on or exited, but never away from one whose exit is still playing out. */
   memberFocus: string | null;
   /** Tab the manager phone follows: the first one held, until it's no longer held. */
   heldFocus: string | null;
@@ -84,6 +84,11 @@ function stillFocused(store: Store, focusId: string | null, statuses: TabStatus[
   return Boolean(focused && statuses.includes(focused.status));
 }
 
+/** The member phone moves to `tabId` unless the tab it shows is mid-exit (push, countdown, settling). */
+function followTab(store: Store, tabId: string): string {
+  return stillFocused(store, store.memberFocus, ["exit_detected", "grace", "reconciling"], tabId) ? store.memberFocus! : tabId;
+}
+
 function reduceEvent(store: Store, event: SettleEvent): Store {
   // Events older than the snapshot are replays: take their timestamps, not their tab objects.
   const live = !store.snapshotAt || event.at >= store.snapshotAt;
@@ -97,16 +102,16 @@ function reduceEvent(store: Store, event: SettleEvent): Store {
         ...store,
         state,
         meta: withMeta(store, tab!.id, { ledgerIndex: d.ledgerIndex as number }),
+        memberFocus: live ? followTab(store, tab!.id) : store.memberFocus,
       };
     case "tab.item_added":
-      return { ...store, state };
+      return { ...store, state, memberFocus: live ? followTab(store, tab!.id) : store.memberFocus };
     case "tab.exit_detected":
       return {
         ...store,
         state,
         meta: withMeta(store, tab!.id, { exitAt: event.at }),
-        // Stay on a tab whose exit is still playing out; otherwise follow this one.
-        memberFocus: stillFocused(store, store.memberFocus, ["exit_detected", "grace", "reconciling"]) ? store.memberFocus : tab!.id,
+        memberFocus: followTab(store, tab!.id),
       };
     case "member.push": {
       const push = d as unknown as MemberPush;
