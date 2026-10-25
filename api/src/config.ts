@@ -24,6 +24,8 @@ export const config = {
   agentTimeoutMs: Number(env.AGENT_TIMEOUT_MS ?? 8000),
   awsRegion: env.AWS_REGION ?? "us-east-1",
   corsOrigin: env.CORS_ORIGIN ?? "*",
+  /** Shared staff secret, sent as X-Staff-Token on approve, reject, close, PATCH /policy, fund and /demo/reset. Unset = open. */
+  staffToken: env.STAFF_TOKEN ?? "",
   outstandingSeedCents: Number(env.OUTSTANDING_SEED_CENTS ?? 34_218_000),
 
   // Mastercard integration ----------------------------------------------------

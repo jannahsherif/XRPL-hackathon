@@ -244,6 +244,62 @@ describe("policy, metrics and reset", () => {
   });
 });
 
+describe("staff token (STAFF_TOKEN)", () => {
+  const TOKEN = "staff-secret";
+  const asStaff = (method: "POST" | "PATCH", url: string, token?: string, payload?: object) =>
+    built.app.inject({ method, url, payload, headers: token === undefined ? {} : { "x-staff-token": token } });
+
+  beforeEach(async () => {
+    await built.app.close();
+    await start({}, { staffToken: TOKEN });
+  });
+
+  it("approve needs the header: 401 without it or with the wrong one, 200 with it", async () => {
+    const { id } = await openTab();
+    await post(`/tabs/${id}/dispute`);
+    for (const token of [undefined, "wrong", ""]) {
+      const res = await asStaff("POST", `/tabs/${id}/approve`, token);
+      expect(res.statusCode).toBe(401);
+      expect(res.json()).toMatchObject({ code: "UNAUTHORIZED" });
+    }
+    expect((await get(`/tabs/${id}`)).json().status).toBe("held");
+    const res = await asStaff("POST", `/tabs/${id}/approve`, TOKEN);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status).toBe("settled");
+  });
+
+  it.each([
+    ["POST", "/tabs/t1/reject"],
+    ["POST", "/tabs/t1/close"],
+    ["PATCH", "/policy"],
+    ["POST", "/members/m1/fund"],
+    ["POST", "/demo/reset"],
+  ] as const)("%s %s is 401 without the header", async (method, url) => {
+    const res = await asStaff(method, url, undefined, { amountCents: 100 });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("member, POS and read routes stay open", async () => {
+    const { id } = await openTab();
+    expect((await post(`/tabs/${id}/items`, { menuItemId: "espresso" })).statusCode).toBe(200);
+    expect((await post(`/tabs/${id}/exit`)).statusCode).toBe(200);
+    expect((await post(`/tabs/${id}/tip`, { pct: 18 })).statusCode).toBe(200);
+    expect((await post(`/tabs/${id}/dispute`)).statusCode).toBe(200);
+    expect((await get("/state")).statusCode).toBe(200);
+    expect((await get("/policy")).statusCode).toBe(200);
+  });
+});
+
+describe("DEMO=0", () => {
+  it("does not register /demo/* routes", async () => {
+    await built.app.close();
+    await start({}, { demo: false });
+    expect((await post("/demo/reset")).statusCode).toBe(404);
+    expect((await post("/demo/ap4m/over-cap/t1")).statusCode).toBe(404);
+  });
+});
+
 describe("CORS", () => {
   it("allows any origin by default", async () => {
     const res = await built.app.inject({ method: "GET", url: "/state", headers: { origin: "http://localhost:5173" } });

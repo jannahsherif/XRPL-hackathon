@@ -57,6 +57,7 @@ Then open `http://localhost:8080/state` and stream `curl -N http://localhost:808
 | `AGENT_MODE` | `local` | `agentcore` calls the deployed settlement agent (`AGENT_RUNTIME_ARN`, `AGENT_QUALIFIER=live`) |
 | `AGENT_TIMEOUT_MS` | `8000` | After this, the deterministic fallback decides |
 | `CORS_ORIGIN` | `*` | Comma-separated origins for the frontend |
+| `STAFF_TOKEN` | unset | Staff routes (approve, reject, close, `PATCH /policy`, fund, `/demo/reset`) need it as the `X-Staff-Token` header; unset leaves them open and logs a warning at boot |
 
 See [.env.example](.env.example).
 
@@ -103,11 +104,13 @@ How the API maps onto the ledger module ([src/ledger/teamLedger.ts](src/ledger/t
 | `POST /tabs/:id/dispute {note?}` | Moves the tab to held |
 | `POST /tabs/:id/approve` / `/reject` | Manager decision on a held tab; reject returns the escrow and closes the tab |
 | `POST /tabs/:id/close` | Manual close by staff (escrow cancelled) |
-| `POST /demo/reset` | Reseeds everything and cancels open escrows |
+| `POST /demo/reset` | Reseeds everything and cancels open escrows (only registered with `DEMO=1`) |
 | `GET /events` | SSE stream (`?replay=1` replays recent events) |
 | Extras | `GET /tabs/:id`, `GET /metrics`, `GET`/`PATCH /policy`, `GET /health` |
 
 Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or menu item) or `409` (illegal state transition).
+
+**Staff routes.** With `STAFF_TOKEN` set, approve, reject, close, `PATCH /policy`, `POST /members/:id/fund` and `POST /demo/reset` need an `X-Staff-Token` header with that value, or they return `401 {error, code: "UNAUTHORIZED"}`. Reads, `POST /tabs`, items, exit, tip, dispute and `/events` stay open for the member phone and the POS. The `/demo/*` routes only exist with `DEMO=1`.
 
 **Events.** Each SSE message uses its type as the SSE `event:` name, so use `es.addEventListener("tab.settled", ...)`. The data is `{type, at, data}`. On connect the stream sends one `snapshot` event with the full state.
 
@@ -161,17 +164,24 @@ gh release create v0.1.0 --target main --generate-notes                        #
 
 Or use **Releases → Draft a new release** in GitHub; tick "Set as a pre-release" for `dev`. Drafts don't deploy until they are published. The release tag versions the agent zip (`agent/<stage>/<tag>.zip`) and the image (`settle-api:<tag>`), so redeploying an older release rolls back. The job summary prints the HTTPS API URL. The first deploy takes about 10–15 minutes because CloudFront is created. To require approval before `prod`, add required reviewers to the `prod` environment under Settings → Environments.
 
-**Ledger keys:** once Alex's module is in `ledger/`, store its env vars and switch modes:
+**Ledger keys and staff token:** store the ledger module's seeds and `STAFF_TOKEN` in one secret (the task expands it into its environment), then switch modes:
 
 ```bash
 aws secretsmanager put-secret-value --secret-id settle/dev/ledger-env \
-  --secret-string '{"VENUE_SEED":"s...","ISSUER_ADDRESS":"r..."}'   # whatever keys ledger/ reads
+  --secret-string '{"VENUE_SEED":"s...","MEMBER_1_SEED":"s...","MEMBER_2_SEED":"s...","MEMBER_3_SEED":"s...","MEMBER_4_SEED":"s...","MEMBER_5_SEED":"s...","STAFF_TOKEN":"<openssl rand -hex 32>"}'
 # then set the GitHub variable LEDGER_MODE=module and publish a new release
 ```
 
 **From a laptop:** `STAGE=dev ARTIFACT_BUCKET=<bucket> api/scripts/deploy.sh` runs the same four steps. It needs Docker, `uv` and the AWS CLI.
 
 **Tear down:** delete `settle-<stage>-api`, then `settle-<stage>-agent`. The ledger secret and the bootstrap bucket and ECR repo are retained on purpose.
+
+## Before production
+
+Known gaps in the deploy setup, left as they are for the hackathon:
+
+- **The deploy role can escalate to admin** ([infra/bootstrap.yaml](infra/bootstrap.yaml)). The GitHub OIDC deploy role has `PowerUserAccess` plus `iam:CreateRole`, `PutRolePolicy`, `AttachRolePolicy`, `UpdateAssumeRolePolicy` and `PassRole` on `role/settle-*`, so a workflow run can create a `settle-*` role with any policy attached. Fix: require a permissions boundary on every role it creates (an `iam:PermissionsBoundary` condition on `CreateRole`, `PutRolePolicy` and `AttachRolePolicy`), limit `AttachRolePolicy` with an `iam:PolicyARN` condition to the managed policies the stacks use (such as `AmazonECSTaskExecutionRolePolicy`), deny `iam:DeleteRolePermissionsBoundary` and `iam:PutRolePermissionsBoundary`, and replace `PowerUserAccess` with a policy scoped to the services and resources the stacks deploy.
+- **Third-party actions are pinned by tag, not commit** ([.github/workflows/api.yml](../.github/workflows/api.yml)). `aws-actions/configure-aws-credentials`, `aws-actions/amazon-ecr-login`, `astral-sh/setup-uv`, `docker/setup-qemu-action` and `docker/setup-buildx-action` run in the job that holds AWS credentials, and a moved tag would run new code there. Fix: pin each to a full 40-character commit SHA (`uses: astral-sh/setup-uv@<sha> # v6.x.y`) and let Dependabot update the pins.
 
 ## Cost (rough, per stage while running)
 

@@ -6,6 +6,9 @@ expandLedgerEnv(process.env);
 expandLedgerEnv(process.env, "AP4M_ENV_JSON");
 
 const { app } = await buildApp(config);
+if (!config.staffToken) {
+  app.log.warn("STAFF_TOKEN is not set: approve, reject, close, PATCH /policy, fund and /demo/reset are open to anyone who can reach this server");
+}
 
 const shutdown = async () => {
   await app.close();
