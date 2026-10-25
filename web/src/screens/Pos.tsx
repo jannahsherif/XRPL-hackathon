@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Sidebar } from "../components/Sidebar";
@@ -13,6 +13,9 @@ import { OPEN_STATUSES, type MenuItem, type Tab } from "../lib/types";
 
 type Chip = "Drinks" | "Wine" | "Food" | "Bottles";
 const CHIPS: Chip[] = ["Drinks", "Wine", "Food", "Bottles"];
+
+// A double tap within this window adds one item, not two.
+const TAP_DEBOUNCE_MS = 600;
 
 // Grid order mirrors pos.jpg: cocktails, then food, then the anomaly bottle.
 const ORDER = ["martini", "old-fashioned", "wine-glass", "oysters", "burger", "fries", "bottle-900", "espresso", "salmon", "steak"];
@@ -210,16 +213,25 @@ function MenuTile({ item, tab }: { item: MenuItem; tab?: Tab }) {
   const { actions } = useSettle();
   const [pulse, setPulse] = useState(0);
   const [missing, setMissing] = useState(false);
+  const lastTap = useRef(0);
+  const inFlight = useRef(false);
   const anomaly = item.category === "bottle";
-  const enabled = Boolean(tab && canOrder(tab));
+  // One bottle per tab: a second would push the tab past its escrow, and that hold can't be approved.
+  const onTab = anomaly && Boolean(tab?.items.some((i) => i.name === item.name));
+  const enabled = Boolean(tab && canOrder(tab)) && !onTab;
 
   const add = async () => {
-    if (!tab || !enabled) return;
+    const now = Date.now();
+    if (!tab || !enabled || inFlight.current || now - lastTap.current < TAP_DEBOUNCE_MS) return;
+    lastTap.current = now;
+    inFlight.current = true;
     setPulse((n) => n + 1);
     try {
       await actions.addItem(tab.id, item.id);
     } catch {
       // the store shows the error
+    } finally {
+      inFlight.current = false;
     }
   };
 
@@ -229,7 +241,7 @@ function MenuTile({ item, tab }: { item: MenuItem; tab?: Tab }) {
       type="button"
       onClick={add}
       disabled={!enabled}
-      className={`flex flex-col overflow-hidden rounded-2xl border p-2.5 text-left transition-[transform,background-color] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`flex flex-col overflow-hidden rounded-2xl border p-2.5 text-left transition-[transform,background-color,opacity] active:scale-[0.98] disabled:cursor-not-allowed ${onTab ? "opacity-45 saturate-50" : "disabled:opacity-60"} ${
         anomaly ? "border-dashed border-terracotta-line bg-[#fdf5ee]" : "border-stone/50 bg-paper hover:bg-white"
       } ${pulse ? "animate-tile-pulse" : ""}`}
     >
@@ -249,7 +261,7 @@ function MenuTile({ item, tab }: { item: MenuItem; tab?: Tab }) {
         <div className="text-[18px] leading-snug font-medium text-midnight">{item.name}</div>
         <div className={`mt-0.5 text-[17px] ${anomaly ? "text-terracotta" : "text-muted"}`}>
           {usd(item.priceCents, { trim: true })}
-          {anomaly && " · anomaly trigger (DEMO)"}
+          {anomaly && (onTab ? " · already on this tab" : " · anomaly trigger (DEMO)")}
         </div>
       </div>
     </button>
