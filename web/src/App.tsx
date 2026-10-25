@@ -3,12 +3,14 @@ import { Navigate, Route, Routes } from "react-router";
 import { ErrorToast } from "./components/ui";
 import { SettleProvider, useSettle } from "./lib/store";
 import { Dashboard } from "./screens/Dashboard";
+import { Pos } from "./screens/Pos";
 
 export function App() {
   return (
     <SettleProvider>
       <Routes>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/pos" element={<Pos />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <Errors />

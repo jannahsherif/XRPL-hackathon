@@ -217,18 +217,19 @@ export function SettleProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const actions = useMemo<Actions>(() => {
-    const run = async (path: string, body?: unknown): Promise<Tab> => {
+    // `quiet` leaves the error to the caller (the POS new-tab form shows it inline).
+    const run = async (path: string, body?: unknown, quiet = false): Promise<Tab> => {
       try {
         const tab = await api<Tab>(path, { method: "POST", body: body ?? {} });
         dispatch({ kind: "tab", tab });
         return tab;
       } catch (err) {
-        dispatch({ kind: "error", message: (err as Error).message });
+        if (!quiet) dispatch({ kind: "error", message: (err as Error).message });
         throw err;
       }
     };
     return {
-      openTab: (memberId, seat) => run("/tabs", { memberId, seat }),
+      openTab: (memberId, seat) => run("/tabs", { memberId, seat }, true),
       addItem: (tabId, menuItemId) => run(`/tabs/${tabId}/items`, { menuItemId, qty: 1 }),
       exit: (tabId) => run(`/tabs/${tabId}/exit`),
       tip: (tabId, pct) => run(`/tabs/${tabId}/tip`, { pct }),
