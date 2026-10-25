@@ -10,7 +10,7 @@ import { clockTimeAmPm, codeLabel, countdown, duration, hasEscrow, itemCount, se
 import { toCents, tokens, usd } from "../lib/money";
 import { useSettle, type TabMeta } from "../lib/store";
 import { byOpenedDesc, graceLeft, inGrace } from "../lib/tabs";
-import { OPEN_STATUSES, type SettleState, type Tab } from "../lib/types";
+import { OPEN_STATUSES, type SettleState, type Settlement, type Tab } from "../lib/types";
 
 /**
  * Staff dashboard. `embedded` drops the sidebar for the presenter view, which also passes
@@ -132,6 +132,12 @@ function Tiles({ state, now }: { state: SettleState; now: number }) {
   const { lastSettled } = useSettle();
   const recent = useRecentSettle(now);
   const { metrics, tabs } = state;
+  const latest =
+    tabs.find((t) => t.id === lastSettled?.tabId)?.settlement ??
+    tabs
+      .map((t) => t.settlement)
+      .filter((s): s is Settlement => Boolean(s))
+      .sort((a, b) => Date.parse(b.validatedAt ?? "") - Date.parse(a.validatedAt ?? ""))[0];
   const open = tabs.filter((t) => OPEN_STATUSES.includes(t.status));
   const escrowedOpen = open.filter(hasEscrow).length;
   const escrowed = tabs.filter(hasEscrow);
@@ -167,10 +173,15 @@ function Tiles({ state, now }: { state: SettleState; now: number }) {
         icon={<IconCheckCircle size={26} />}
         label="Settled tonight"
         value={metrics.settledCount}
-        sub={metrics.settledCount ? `avg ${seconds(metrics.avgSettleMs)} · 1 ledger` : "none yet"}
+        sub={metrics.settledCount ? `avg ${seconds(metrics.avgSettleMs)} · ${ledgerCount(latest) === 1 ? "1 ledger" : "2 ledgers"}` : "none yet"}
       />
     </section>
   );
+}
+
+/** Ledgers the settle used: a Batch, or an EscrowFinish with nothing to refund, is one; finish then refund is two. */
+function ledgerCount(s?: Settlement): number {
+  return !s || s.mode === "batch" || !s.refundTxHash ? 1 : 2;
 }
 
 function Tile({ icon, label, value, sub, glowKey }: { icon: ReactNode; label: string; value: ReactNode; sub: string; glowKey?: string }) {
