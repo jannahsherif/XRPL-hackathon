@@ -10,7 +10,8 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "fixture": "node scripts/capture-fixture.mjs"
+    "fixture": "node scripts/capture-fixture.mjs",
+    "acceptance": "node scripts/acceptance.mjs"
   },
   "dependencies": {
     "react": "19.3.1",
