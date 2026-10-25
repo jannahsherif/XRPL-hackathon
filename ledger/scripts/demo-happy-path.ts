@@ -1,5 +1,8 @@
 // Acceptance test: openTab -> wait for FinishAfter -> settleTab on testnet, printing hashes, amounts
 // and elapsed ms. Exits non-zero if anything fails or the balances don't move by the right amounts.
+// On a pass it writes fixtures/happy-path.json (hashes, timestamps, steps), which the API's stub
+// ledger replays so the stub demo shows explorer links to real testnet transactions.
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { add, refundFor, sub } from '../src/amounts.ts'
 import { createLedger } from '../src/index.ts'
 
@@ -27,6 +30,7 @@ try {
   console.log(`waiting   for a validated ledger to close after FinishAfter ${opened.finishAfter} ...`)
   let t = performance.now()
   await ledger.waitForFinishAfter(tab)
+  const finishableAt = new Date().toISOString()
   console.log(`          finishable after ${secs(performance.now() - t)}`)
 
   console.log(`settleTab amount ${amount} + tip ${tipAmount}`)
@@ -58,6 +62,33 @@ try {
   ]
   for (const [name, ok] of checks) console.log(`check     ${ok ? 'ok  ' : 'FAIL'} ${name}`)
   if (checks.some(([, ok]) => !ok)) throw new Error('checks failed')
+
+  const fixture = new URL('../fixtures/happy-path.json', import.meta.url)
+  mkdirSync(new URL('.', fixture), { recursive: true })
+  const { allowance: _a, finishAfter: _f, cancelAfter: _c, ...openTab } = opened
+  writeFileSync(
+    fixture,
+    `${JSON.stringify(
+      {
+        source: 'ledger demo:happy-path',
+        network: 'testnet',
+        capturedAt: new Date().toISOString(),
+        memberId,
+        openTab,
+        settleTab: settled,
+        events: [
+          { at: opened.submittedAt, event: 'EscrowCreate submitted' },
+          { at: opened.validatedAt, event: 'EscrowCreate validated', txHash: opened.txHash },
+          { at: finishableAt, event: 'FinishAfter passed' },
+          { at: settled.submittedAt, event: `settle submitted (${settled.mode})` },
+          { at: settled.validatedAt, event: 'settle validated', txHash: settled.batchTxHash ?? settled.finishTxHash },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  console.log(`fixture   ${fixture.pathname}`)
   console.log(`PASS      validated in ${settled.elapsedMs}ms (${settled.elapsedMs < 5000 ? 'under' : 'over'} 5s)`)
 } catch (error) {
   const { code, result } = error as { code?: string; result?: string }

@@ -4,7 +4,9 @@
 //   1. m1 opens a tab, orders five items, exits, and the tab settles.
 //   2. m5 opens a tab, orders the $900 bottle, exits, the agent holds it, a manager approves, it settles.
 //
-// Usage: node scripts/acceptance.mjs [--api http://localhost:8080] [--out run.json]
+// Usage: node scripts/acceptance.mjs [--api http://localhost:8080] [--out run.json] [--fixture path]
+// --fixture (module mode only) writes scenario 1 in the shape of ledger/fixtures/happy-path.json,
+// which the API's stub ledger replays.
 // Env: API_URL, STAFF_TOKEN (sent as X-Staff-Token when the API has one).
 // In module mode (real ledger) it waits until 32 s after each open before exiting, because an escrow
 // can't be finished before FinishAfter (20 s after open, plus ledger close-time rounding).
@@ -17,6 +19,7 @@ const flag = (name) => {
 };
 const API = (flag("api") ?? process.env.API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
 const OUT = flag("out");
+const FIXTURE = flag("fixture");
 const STAFF_TOKEN = process.env.STAFF_TOKEN ?? "";
 const FIVE_ITEMS = ["martini", "old-fashioned", "oysters", "burger", "fries"];
 
@@ -180,6 +183,29 @@ async function main() {
   return state.mode.ledger;
 }
 
+/** Scenario 1 as a replay fixture: the same shape ledger's demo:happy-path writes. */
+function happyPathFixture() {
+  const { tabId, escrow, settlement } = results.happy;
+  const forHappy = events.filter((e) => (e.data?.tab?.id ?? e.data?.tabId) === tabId && e.type !== "tab.grace_tick");
+  const opened = forHappy.find((e) => e.type === "tab.opened");
+  return {
+    source: "web/scripts/acceptance.mjs (scenario 1, LEDGER_MODE=module)",
+    network: "testnet",
+    capturedAt: new Date().toISOString(),
+    memberId: "member-1",
+    openTab: {
+      submittedAt: escrow.submittedAt,
+      validatedAt: escrow.validatedAt,
+      escrowSeq: escrow.seq,
+      txHash: escrow.txHash,
+      explorerUrl: escrow.explorerUrl,
+      ledgerIndex: opened?.data.ledgerIndex,
+    },
+    settleTab: settlement,
+    events: forHappy.map((e) => ({ at: e.at, event: e.type, ...(e.type === "tab.settled" ? { txHash: settlement.batchTxHash ?? settlement.finishTxHash } : {}) })),
+  };
+}
+
 let ledgerMode = "unknown";
 try {
   ledgerMode = await main();
@@ -197,5 +223,11 @@ try {
     const run = { api: API, ledger: ledgerMode, passed: process.exitCode === 0, finishedAt: new Date().toISOString(), results, events };
     await writeFile(OUT, `${JSON.stringify(run, null, 2)}\n`);
     console.log(`wrote ${OUT}`);
+  }
+  if (FIXTURE && process.exitCode === 0 && ledgerMode === "module") {
+    await writeFile(FIXTURE, `${JSON.stringify(happyPathFixture(), null, 2)}\n`);
+    console.log(`wrote fixture ${FIXTURE}`);
+  } else if (FIXTURE) {
+    console.log(`fixture not written: it needs a passing run against LEDGER_MODE=module (this was ${ledgerMode})`);
   }
 }

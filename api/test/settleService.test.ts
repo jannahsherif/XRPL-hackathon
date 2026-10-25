@@ -386,6 +386,19 @@ describe("hold path", () => {
     expect(tab.status).toBe("settled");
   });
 
+  it("approve announces reconciling before the ledger settles", async () => {
+    const { service, ofType } = makeService({ agent: fixedAgent({ action: "hold" }) });
+    const tab = await service.openTab("m5");
+    service.addItem(tab.id, "bottle-900");
+    service.exit(tab.id);
+    await runGrace();
+    const before = ofType("tab.updated").length;
+    const approving = service.approve(tab.id);
+    expect(ofType("tab.updated").slice(before).map((e) => (e.data as { change: string }).change)).toEqual(["reconciling"]);
+    await approving;
+    expect(tab.status).toBe("settled");
+  });
+
   it("approve keeps a tab held if its items alone exceed the escrow", async () => {
     const { service, ledger } = makeService({ agent: fixedAgent({ action: "hold" }) });
     const tab = await service.openTab("m4"); // $300
@@ -546,6 +559,32 @@ describe("race conditions", () => {
     await flush();
     expect(ledger.settleTab).not.toHaveBeenCalled();
     expect(() => service.getTab(tab.id)).toThrow(NotFoundError);
+  });
+
+  it("drops a settle that lands after a demo reset", async () => {
+    let release!: (r: unknown) => void;
+    const ledger = fakeLedger({ settleTab: vi.fn(() => new Promise((r) => (release = r))) });
+    const { service, tab, ofType } = await openedTab(makeService({ ledger }));
+    service.exit(tab.id);
+    await runGrace(); // reconciling, waiting on the ledger
+    await service.reset();
+    release({ finishTxHash: "F", refundTxHash: null, toVenue: "127.20", toMember: "472.80", elapsedMs: 4000, explorerUrls: [] });
+    await flush();
+    expect(ofType("tab.settled")).toHaveLength(0);
+    expect(service.metrics()).toMatchObject({ settledCount: 0, outstandingCents: testConfig().outstandingSeedCents });
+    expect(() => service.getTab(tab.id)).toThrow(NotFoundError);
+  });
+
+  it("drops a manual close that lands after a demo reset", async () => {
+    let release!: (r: unknown) => void;
+    // The close's cancel hangs until released; the reset's own cancel goes straight through.
+    const cancelTab = vi.fn().mockImplementationOnce(() => new Promise((r) => (release = r))).mockResolvedValue({ txHash: "R" });
+    const { service, tab, ofType } = await openedTab(makeService({ ledger: fakeLedger({ cancelTab }) }));
+    const closing = service.close(tab.id);
+    await service.reset();
+    release({ txHash: "C" });
+    await closing;
+    expect(ofType("tab.updated").some((e) => (e.data as { change: string }).change === "closed_manually")).toBe(false);
   });
 
   it("settles many tabs concurrently", async () => {

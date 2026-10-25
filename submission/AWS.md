@@ -110,7 +110,7 @@ We reviewed Settle against the six pillars of the [AWS Well-Architected Framewor
 | Built | Evidence |
 |---|---|
 | Everything is infrastructure as code: three CloudFormation stacks (bootstrap, agent, api), linted with cfn-lint in CI | `api/infra/*.yaml`, `.github/workflows/api.yml` |
-| Small, reversible changes. Every PR and push runs the typecheck, 494 tests with coverage thresholds (95% lines), the pytest agent tests and cfn-lint. Deploys happen only on a published GitHub Release, tagged by release, so rolling back means re-running an older release | `api/vitest.config.ts`, `api.yml` |
+| Small, reversible changes. Every PR and push runs the typecheck, 530+ tests with coverage thresholds (95% lines), the pytest agent tests and cfn-lint. Deploys happen only on a published GitHub Release, tagged by release, so rolling back means re-running an older release | `api/vitest.config.ts`, `api.yml` |
 | Deployment safety: the ECS deployment circuit breaker auto-rolls back a failed task, and a post-deploy smoke test hits `/health` and `/state` | `api.yaml` (`DeploymentCircuitBreaker`), `api.yml` |
 | Observability: structured JSON logs to CloudWatch (30-day retention) and ECS Container Insights. The agent emits OpenTelemetry traces and metrics through AgentCore Observability to X-Ray and CloudWatch | `api.yaml`, `agent.yaml` (`opentelemetry-instrument`) |
 | Business events double as an audit trail. Every state change, agent decision, Voucher and settlement is an SSE event carrying its transaction hashes | `api/src/settleService.ts`, `api/README.md` (event table) |
@@ -145,7 +145,7 @@ We reviewed Settle against the six pillars of the [AWS Well-Architected Framewor
 | Built | Evidence |
 |---|---|
 | **Graceful degradation of the AI dependency.** AgentCore calls have an 8-second timeout. On error, timeout or invalid output, a deterministic fallback decides, so settlement never depends on model availability | `api/src/agent/settlementAgent.ts`, `test/settlementAgent.test.ts` |
-| **Fail safe on money.** A ledger or AP4M failure moves the tab to `held` with the error code, for manager retry. It is never silently dropped or double-charged | `settleService.ts`, `test/integration/ledger.contract.test.ts` |
+| **Fail safe on money.** A ledger or AP4M failure moves the tab to `held` with `hold.source: "ledger"` and the error in `hold.code` (`LEDGER_TIMEOUT`, `ESCROW_NOT_FOUND`, …), for manager retry. It is never silently dropped or double-charged | `settleService.ts`, `test/integration/ledger.contract.test.ts` |
 | **Idempotency.** An x402 redemption is keyed by voucher digest, so a retry returns the same claim and never redeems twice. Each tab invoice is payable once | `api/src/ap4m/merchant.ts`, `test/ap4m.x402.test.ts` |
 | **Race safety.** A late agent decision after a dispute or reset is discarded, and timers are cleared on every terminal transition | `test/settleService.test.ts` (race conditions) |
 | **Health-checked compute.** ALB and container health checks, with ECS replacing unhealthy tasks. The ALB spans two Availability Zones. The agent runs on managed, serverless AgentCore Runtime | `api.yaml` |

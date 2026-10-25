@@ -5,7 +5,7 @@ import fixtureState from "../fixtures/state.json";
 import { api } from "./api";
 import { MOCK } from "./config";
 import { toCents } from "./money";
-import type { AgentDecision, Balances, MemberPush, SettleEvent, SettleState, Tab } from "./types";
+import type { AgentDecision, Balances, MemberPush, SettleEvent, SettleState, Tab, TabStatus } from "./types";
 import { useEventStream } from "./useEventStream";
 
 /** What only events know about a tab (the tab object itself has no ledger index or exit time). */
@@ -36,9 +36,9 @@ interface Store {
   /** Server time of the last snapshot; replayed events are older than this. */
   snapshotAt: string | null;
   lastSettled: SettledNotice | null;
-  /** Tab the member phone follows: the latest one with live activity. */
+  /** Tab the member phone follows: the first one to emit exit_detected, until its settle is over. */
   memberFocus: string | null;
-  /** Latest tab to be held, for the manager phone. */
+  /** Tab the manager phone follows: the first one held, until it's no longer held. */
   heldFocus: string | null;
   /** The last live member.push, so the presenter view can bring the member phone up. */
   lastPush: { tabId: string; at: string } | null;
@@ -77,6 +77,13 @@ function withMeta(store: Store, tabId: string, patch: Partial<TabMeta>): Record<
   return { ...store.meta, [tabId]: { ...store.meta[tabId], ...patch } };
 }
 
+/** True while `focusId` names another tab that is still in one of `statuses`. */
+function stillFocused(store: Store, focusId: string | null, statuses: TabStatus[], incomingId?: string): boolean {
+  if (!focusId || focusId === incomingId) return false;
+  const focused = store.state?.tabs.find((t) => t.id === focusId);
+  return Boolean(focused && statuses.includes(focused.status));
+}
+
 function reduceEvent(store: Store, event: SettleEvent): Store {
   // Events older than the snapshot are replays: take their timestamps, not their tab objects.
   const live = !store.snapshotAt || event.at >= store.snapshotAt;
@@ -90,18 +97,22 @@ function reduceEvent(store: Store, event: SettleEvent): Store {
         ...store,
         state,
         meta: withMeta(store, tab!.id, { ledgerIndex: d.ledgerIndex as number }),
-        memberFocus: live ? tab!.id : store.memberFocus,
       };
     case "tab.item_added":
-      return { ...store, state, memberFocus: live ? tab!.id : store.memberFocus };
+      return { ...store, state };
     case "tab.exit_detected":
-      return { ...store, state, meta: withMeta(store, tab!.id, { exitAt: event.at }) };
+      return {
+        ...store,
+        state,
+        meta: withMeta(store, tab!.id, { exitAt: event.at }),
+        // Stay on a tab whose exit is still playing out; otherwise follow this one.
+        memberFocus: stillFocused(store, store.memberFocus, ["exit_detected", "grace", "reconciling"]) ? store.memberFocus : tab!.id,
+      };
     case "member.push": {
       const push = d as unknown as MemberPush;
       return {
         ...store,
         meta: withMeta(store, push.tabId, live ? { push, secondsLeft: push.secondsLeft } : { push }),
-        memberFocus: live ? push.tabId : (store.memberFocus ?? push.tabId),
         lastPush: live ? { tabId: push.tabId, at: event.at } : store.lastPush,
       };
     }
@@ -113,7 +124,7 @@ function reduceEvent(store: Store, event: SettleEvent): Store {
       return { ...store, meta: withMeta(store, tabId, { decision: { ...decision, at: event.at } }) };
     }
     case "tab.held":
-      return { ...store, state, heldFocus: live ? tab!.id : (store.heldFocus ?? tab!.id) };
+      return { ...store, state, heldFocus: stillFocused(store, store.heldFocus, ["held"], tab!.id) ? store.heldFocus : tab!.id };
     case "tab.settled": {
       const settled = tab!;
       const notice = live
@@ -134,7 +145,7 @@ function reduceEvent(store: Store, event: SettleEvent): Store {
         return live ? { ...initial, connected: store.connected, snapshotAt: event.at, state: d.state as SettleState, balances: store.balances } : store;
       }
       if (!tab) return store;
-      if (d.change === "tip") return { ...store, state, meta: withMeta(store, tab.id, { tipPct: d.tipPct as number }), memberFocus: live ? tab.id : store.memberFocus };
+      if (d.change === "tip") return { ...store, state, meta: withMeta(store, tab.id, { tipPct: d.tipPct as number }) };
       if (d.change === "closed_manually") return { ...store, state, meta: withMeta(store, tab.id, { closedReason: d.reason as string }) };
       return { ...store, state };
     }

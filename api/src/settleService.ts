@@ -353,7 +353,11 @@ export class SettleService {
   }
 
   private async settle(tab: Tab, decision: AgentDecision): Promise<void> {
-    if (tab.status !== "reconciling") this.move(tab, "reconciling");
+    // Approve arrives from held: announce reconciling at once, as reconcile() does, so screens leave "Held".
+    if (tab.status !== "reconciling") {
+      this.move(tab, "reconciling");
+      this.bus.publish("tab.updated", { tab, change: "reconciling" });
+    }
     const allowanceCents = decimalToCents(tab.allowance);
     if (tab.totalCents > allowanceCents) {
       this.hold(tab, `Total $${centsToDecimal(tab.totalCents)} is above the escrowed $${tab.allowance}; settle the difference manually`, "rules", "OVER_ALLOWANCE");
@@ -379,6 +383,8 @@ export class SettleService {
 
     try {
       const result = await this.ledger.settleTab({ tab: structuredClone(tab), amount, tipAmount: centsToDecimal(tab.tipCents) });
+      // A demo reset while the ledger was settling replaced this tab: drop the late result.
+      if (this.tabs.get(tab.id) !== tab) return;
       tab.settlement = {
         finishTxHash: result.finishTxHash,
         refundTxHash: result.refundTxHash,
@@ -402,6 +408,7 @@ export class SettleService {
       this.bus.publish("tab.settled", { tab, settlement: tab.settlement, explorerUrls: result.explorerUrls, decision });
       this.publishMetrics();
     } catch (err) {
+      if (this.tabs.get(tab.id) !== tab) return;
       // A ledger failure after a settle decision: the hold says so in source and code, not only in prose.
       this.hold(tab, `Ledger error (${ledgerErrorCode(err)}): ${(err as Error).message}`, "ledger", ledgerErrorCode(err));
     }
@@ -430,6 +437,8 @@ export class SettleService {
         throw Object.assign(new Error(`Could not cancel escrow (${code})`), { code });
       }
     }
+    // Same as settle: a reset while the cancel was in flight already replaced this tab.
+    if (this.tabs.get(tab.id) !== tab) return tab;
     this.move(tab, "closed_manually");
     tab.graceEndsAt = null;
     this.bus.publish("tab.updated", { tab, change: "closed_manually", reason, cancelTxHash });

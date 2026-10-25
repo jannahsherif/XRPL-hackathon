@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Sidebar } from "../components/Sidebar";
@@ -13,6 +13,12 @@ import { OPEN_STATUSES, type MenuItem, type Tab } from "../lib/types";
 
 type Chip = "Drinks" | "Wine" | "Food" | "Bottles";
 const CHIPS: Chip[] = ["Drinks", "Wine", "Food", "Bottles"];
+
+// The seeded tab scenario A runs on (Eleanor Vance, Bar 3); the POS starts there.
+const STAGE_TAB = "t1";
+
+// A double tap within this window adds one item, not two.
+const TAP_DEBOUNCE_MS = 600;
 
 // Grid order mirrors pos.jpg: cocktails, then food, then the anomaly bottle.
 const ORDER = ["martini", "old-fashioned", "wine-glass", "oysters", "burger", "fries", "bottle-900", "espresso", "salmon", "steak"];
@@ -40,12 +46,20 @@ function PosMain({ embedded = false }: { embedded?: boolean }) {
   const [params, setParams] = useSearchParams();
   const [localTab, setLocalTab] = useState<string | null>(null);
   const [chip, setChip] = useState<Chip | null>(null);
+  // "form": the new-tab form is open; "opening": its POST /tabs is escrowing. Either way the terminal is on
+  // no tab, so a tap can't land on the one it was on before.
+  const [newTab, setNewTab] = useState<"form" | "opening" | null>(null);
 
   const tabs = useMemo(() => [...(state?.tabs ?? [])].sort(byOpenedDesc), [state?.tabs]);
-  const fallback = tabs.find(canOrder)?.id ?? null;
-  const tabId = (embedded ? localTab : params.get("tab")) ?? fallback;
-  const tab = tabs.find((t) => t.id === tabId);
-  const setTab = (id: string) => (embedded ? setLocalTab(id) : setParams({ tab: id }, { replace: true }));
+  // After a load or a reset (or if the chosen tab is gone) the terminal starts on the stage tab.
+  const fallback = tabs.find((t) => t.id === STAGE_TAB && canOrder(t)) ?? tabs.find(canOrder);
+  const chosen = tabs.find((t) => t.id === (embedded ? localTab : params.get("tab")));
+  const tab = newTab ? undefined : (chosen ?? fallback);
+  const setTab = (id: string) => {
+    setNewTab(null);
+    if (embedded) setLocalTab(id);
+    else setParams({ tab: id }, { replace: true });
+  };
 
   const menu = useMemo(() => {
     const items = [...(state?.menu ?? [])].sort((a, b) => rank(a.id) - rank(b.id));
@@ -88,7 +102,7 @@ function PosMain({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         <div className="mt-5 min-h-0 flex-1 overflow-auto pr-1 pb-1">
-          <div className="grid grid-cols-3 gap-4">
+          <div className={`grid grid-cols-3 gap-4 ${newTab === "opening" ? "pointer-events-none opacity-50" : ""}`} aria-disabled={newTab === "opening" || undefined}>
             {menu.map((item) => (
               <MenuTile key={item.id} item={item} tab={tab} />
             ))}
@@ -96,7 +110,7 @@ function PosMain({ embedded = false }: { embedded?: boolean }) {
         </div>
       </section>
 
-      <OpenTabRail tab={tab} tabs={tabs} onSelect={setTab} />
+      <OpenTabRail tab={tab} tabs={tabs} onSelect={setTab} newTab={newTab} onNewTab={setNewTab} />
     </main>
   );
 }
@@ -125,12 +139,13 @@ function StreamingPill({ connected }: { connected: boolean }) {
 
 // Which tab the terminal is on, and opening a new one -------------------------------
 
-function TabSelector({ tabs, tab, onSelect }: { tabs: Tab[]; tab?: Tab; onSelect: (id: string) => void }) {
+function TabSelector({ tabs, tab, onSelect, disabled }: { tabs: Tab[]; tab?: Tab; onSelect: (id: string) => void; disabled?: boolean }) {
   const live = tabs.filter((t) => OPEN_STATUSES.includes(t.status) || t.id === tab?.id);
   return (
     <select
       value={tab?.id ?? ""}
       onChange={(e) => onSelect(e.target.value)}
+      disabled={disabled}
       aria-label="Tab this terminal is on"
       className="h-10 min-w-0 flex-1 rounded-xl border border-stone bg-ivory px-3 text-[15px] text-midnight outline-none focus:border-eucalyptus"
     >
@@ -145,7 +160,7 @@ function TabSelector({ tabs, tab, onSelect }: { tabs: Tab[]; tab?: Tab; onSelect
   );
 }
 
-function NewTabForm({ onOpened, onCancel }: { onOpened: (tabId: string) => void; onCancel: () => void }) {
+function NewTabForm({ onBusy, onOpened, onCancel }: { onBusy: (busy: boolean) => void; onOpened: (tabId: string) => void; onCancel: () => void }) {
   const { state, actions } = useSettle();
   const members = state?.members ?? [];
   const [memberId, setMemberId] = useState(members[0]?.id ?? "m1");
@@ -156,12 +171,14 @@ function NewTabForm({ onOpened, onCancel }: { onOpened: (tabId: string) => void;
 
   const open = async () => {
     setBusy(true);
+    onBusy(true);
     setError(null);
     try {
       const tab = await actions.openTab(memberId, seat.trim() || undefined);
       onOpened(tab.id);
     } catch (err) {
       setError((err as Error).message);
+      onBusy(false);
     } finally {
       setBusy(false);
     }
@@ -195,7 +212,7 @@ function NewTabForm({ onOpened, onCancel }: { onOpened: (tabId: string) => void;
           <>Open tab · escrow {member ? tokens(member.allowance) : ""}</>
         )}
       </Button>
-      <button type="button" onClick={onCancel} className="h-11 px-2 text-[15px] text-graphite underline underline-offset-4">
+      <button type="button" onClick={onCancel} disabled={busy} className="h-11 px-2 text-[15px] text-graphite underline underline-offset-4 disabled:opacity-40">
         Cancel
       </button>
       </div>
@@ -210,16 +227,25 @@ function MenuTile({ item, tab }: { item: MenuItem; tab?: Tab }) {
   const { actions } = useSettle();
   const [pulse, setPulse] = useState(0);
   const [missing, setMissing] = useState(false);
+  const lastTap = useRef(0);
+  const inFlight = useRef(false);
   const anomaly = item.category === "bottle";
-  const enabled = Boolean(tab && canOrder(tab));
+  // One bottle per tab: a second would push the tab past its escrow, and that hold can't be approved.
+  const onTab = anomaly && Boolean(tab?.items.some((i) => i.name === item.name));
+  const enabled = Boolean(tab && canOrder(tab)) && !onTab;
 
   const add = async () => {
-    if (!tab || !enabled) return;
+    const now = Date.now();
+    if (!tab || !enabled || inFlight.current || now - lastTap.current < TAP_DEBOUNCE_MS) return;
+    lastTap.current = now;
+    inFlight.current = true;
     setPulse((n) => n + 1);
     try {
       await actions.addItem(tab.id, item.id);
     } catch {
       // the store shows the error
+    } finally {
+      inFlight.current = false;
     }
   };
 
@@ -229,7 +255,7 @@ function MenuTile({ item, tab }: { item: MenuItem; tab?: Tab }) {
       type="button"
       onClick={add}
       disabled={!enabled}
-      className={`flex flex-col overflow-hidden rounded-2xl border p-2.5 text-left transition-[transform,background-color] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`flex flex-col overflow-hidden rounded-2xl border p-2.5 text-left transition-[transform,background-color,opacity] active:scale-[0.98] disabled:cursor-not-allowed ${onTab ? "opacity-45 saturate-50" : "disabled:opacity-60"} ${
         anomaly ? "border-dashed border-terracotta-line bg-[#fdf5ee]" : "border-stone/50 bg-paper hover:bg-white"
       } ${pulse ? "animate-tile-pulse" : ""}`}
     >
@@ -249,7 +275,7 @@ function MenuTile({ item, tab }: { item: MenuItem; tab?: Tab }) {
         <div className="text-[18px] leading-snug font-medium text-midnight">{item.name}</div>
         <div className={`mt-0.5 text-[17px] ${anomaly ? "text-terracotta" : "text-muted"}`}>
           {usd(item.priceCents, { trim: true })}
-          {anomaly && " · anomaly trigger (DEMO)"}
+          {anomaly && (onTab ? " · already on this tab" : " · anomaly trigger (DEMO)")}
         </div>
       </div>
     </button>
@@ -258,9 +284,20 @@ function MenuTile({ item, tab }: { item: MenuItem; tab?: Tab }) {
 
 // Right rail --------------------------------------------------------------------
 
-function OpenTabRail({ tab, tabs, onSelect }: { tab?: Tab; tabs: Tab[]; onSelect: (id: string) => void }) {
+function OpenTabRail({
+  tab,
+  tabs,
+  onSelect,
+  newTab,
+  onNewTab,
+}: {
+  tab?: Tab;
+  tabs: Tab[];
+  onSelect: (id: string) => void;
+  newTab: "form" | "opening" | null;
+  onNewTab: (state: "form" | "opening" | null) => void;
+}) {
   const { meta, actions } = useSettle();
-  const [opening, setOpening] = useState(false);
   const [sent, setSent] = useState(false);
   const [closing, setClosing] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -278,14 +315,15 @@ function OpenTabRail({ tab, tabs, onSelect }: { tab?: Tab; tabs: Tab[]; onSelect
   const header = (
     <div className="flex items-center gap-3">
       <Eyebrow className="shrink-0 text-graphite">Open tab</Eyebrow>
-      <TabSelector tabs={tabs} tab={tab} onSelect={onSelect} />
+      <TabSelector tabs={tabs} tab={tab} onSelect={onSelect} disabled={newTab === "opening"} />
       <button
         type="button"
-        onClick={() => setOpening(!opening)}
-        aria-expanded={opening}
+        onClick={() => onNewTab(newTab ? null : "form")}
+        disabled={newTab === "opening"}
+        aria-expanded={newTab !== null}
         aria-label="New tab"
         title="New tab"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-stone text-midnight hover:bg-linen"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-stone text-midnight hover:bg-linen disabled:opacity-40"
       >
         <IconPlus size={18} />
       </button>
@@ -296,13 +334,11 @@ function OpenTabRail({ tab, tabs, onSelect }: { tab?: Tab; tabs: Tab[]; onSelect
       )}
     </div>
   );
-  const newTab = opening && (
+  const form = newTab && (
     <NewTabForm
-      onOpened={(id) => {
-        setOpening(false);
-        onSelect(id);
-      }}
-      onCancel={() => setOpening(false)}
+      onBusy={(busy) => onNewTab(busy ? "opening" : "form")}
+      onOpened={(id) => onSelect(id)}
+      onCancel={() => onNewTab(null)}
     />
   );
 
@@ -310,10 +346,21 @@ function OpenTabRail({ tab, tabs, onSelect }: { tab?: Tab; tabs: Tab[]; onSelect
     return (
       <aside className="relative flex w-[460px] shrink-0 flex-col rounded-2xl border border-stone/60 bg-paper px-7 pt-7 pb-6">
         {header}
-        {newTab}
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <p className="font-serif text-[26px] text-midnight">No open tab on this terminal</p>
-          <p className="text-[15px] text-graphite">Press + to escrow a member's allowance and start ordering.</p>
+        {form}
+        {/* Below the form's overlay while it's open. */}
+        <div className={`flex flex-1 flex-col items-center gap-3 text-center ${newTab ? "justify-end pb-16" : "justify-center"}`}>
+          {newTab === "opening" ? (
+            <p className="flex items-center gap-3 font-serif text-[24px] text-midnight" role="status">
+              <Spinner size={20} /> Opening tab… escrowing allowance
+            </p>
+          ) : (
+            <>
+              <p className="font-serif text-[26px] text-midnight">{newTab ? "Choose who's opening a tab" : "No open tab on this terminal"}</p>
+              <p className="text-[15px] text-graphite">
+                {newTab ? "The menu is off until the new tab is open." : "Press + to escrow a member's allowance and start ordering."}
+              </p>
+            </>
+          )}
         </div>
       </aside>
     );
@@ -334,7 +381,6 @@ function OpenTabRail({ tab, tabs, onSelect }: { tab?: Tab; tabs: Tab[]; onSelect
   return (
     <aside className="relative flex w-[460px] shrink-0 flex-col rounded-2xl border border-stone/60 bg-paper px-7 pt-7 pb-6">
       {header}
-      {newTab}
       <div className="mt-4 flex items-center gap-4 border-b border-stone/60 pb-5">
         <Avatar name={tab.memberName} size={64} />
         <div className="min-w-0">

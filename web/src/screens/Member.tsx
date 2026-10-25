@@ -12,7 +12,6 @@ import { useSettle, useTab } from "../lib/store";
 import { canOrder, graceLeft, inGrace } from "../lib/tabs";
 import type { Tab } from "../lib/types";
 
-const TIP_PRESETS = [18, 20, 25];
 
 /** /member/:tabId: the member's lock screen, framed as a phone. */
 export function MemberRoute() {
@@ -47,8 +46,8 @@ export function MemberScreen({ tabId }: { tabId: string | null }) {
         </Card>
       ) : !tab ? (
         <Card>
-          <p className="font-serif text-[17px] text-midnight">No tab {tabId ? `“${tabId}”` : "to show yet"}.</p>
-          <p className="mt-1 text-[13px] text-graphite">Open one on the POS, then come back here.</p>
+          <p className="font-serif text-[17px] text-midnight">{tabId ? `No tab “${tabId}”.` : "Nothing yet."}</p>
+          <p className="mt-1 text-[13px] text-graphite">{tabId ? "Open one on the POS, then come back here." : "The phone lights up when a member leaves."}</p>
         </Card>
       ) : (
         <TabNotification tab={tab} now={now} />
@@ -65,7 +64,8 @@ function TabNotification({ tab, now }: { tab: Tab; now: number }) {
   if (inGrace(tab) || tab.status === "reconciling") {
     return (
       <>
-        <PushCard tab={tab} seconds={graceLeft(tab, m, now)} />
+        {/* Keyed by tab: a second tab's push must not inherit the first one's tip or dispute state. */}
+        <PushCard key={tab.id} tab={tab} seconds={graceLeft(tab, m, now)} />
         <GeofenceNote />
       </>
     );
@@ -125,6 +125,8 @@ function PushCard({ tab, seconds }: { tab: Tab; seconds: number }) {
   const [disputing, setDisputing] = useState(false);
 
   const tipPct = picked ?? meta[tab.id]?.tipPct ?? policy.defaultTipPct;
+  // The choices the API offered in member.push; "Other" is appended below.
+  const options = meta[tab.id]?.push?.tipOptions ?? [policy.defaultTipPct];
   const tip = cappedTipCents(tab.totalCents, tipPct, tab.allowance);
   const balance = balances?.members[tab.memberId];
 
@@ -198,13 +200,13 @@ function PushCard({ tab, seconds }: { tab: Tab; seconds: number }) {
 
         {expanded && (
           <>
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {TIP_PRESETS.map((pct) => (
+            <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length + 1}, minmax(0, 1fr))` }}>
+              {options.map((pct) => (
                 <TipButton key={pct} selected={!other && tipPct === pct} disabled={settling} onClick={() => (setOther(false), setTip(pct))}>
                   {pct}%
                 </TipButton>
               ))}
-              <TipButton selected={other || !TIP_PRESETS.includes(tipPct)} disabled={settling} onClick={() => setOther(true)}>
+              <TipButton selected={other || !options.includes(tipPct)} disabled={settling} onClick={() => setOther(true)}>
                 Other
               </TipButton>
             </div>

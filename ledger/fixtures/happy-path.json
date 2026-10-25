@@ -1,0 +1,77 @@
+{
+  "source": "web/scripts/acceptance.mjs (scenario 1, LEDGER_MODE=module)",
+  "network": "testnet",
+  "capturedAt": "2026-10-25T05:33:52.327Z",
+  "memberId": "member-1",
+  "openTab": {
+    "submittedAt": "2026-10-25T05:32:07.362Z",
+    "validatedAt": "2026-10-25T05:32:11.075Z",
+    "escrowSeq": 21794827,
+    "txHash": "2C13710291EB5C5437F879158308B9DD93826FE370B4C8283D646B6D86A2C032",
+    "explorerUrl": "https://testnet.xrpl.org/transactions/2C13710291EB5C5437F879158308B9DD93826FE370B4C8283D646B6D86A2C032",
+    "ledgerIndex": 21805593
+  },
+  "settleTab": {
+    "finishTxHash": "DB76F38BEBB8ED371A1DC01A54FA1A06BF9658509C45465F48DC9E18A7F0C6EE",
+    "refundTxHash": "602CD2D3863BCB4EBA384ECB6915D3578ED51647063C5AA001347DD87FBAD0C3",
+    "toVenue": "123.60",
+    "toMember": "876.40",
+    "elapsedMs": 5634,
+    "explorerUrls": [
+      "https://testnet.xrpl.org/transactions/DB76F38BEBB8ED371A1DC01A54FA1A06BF9658509C45465F48DC9E18A7F0C6EE",
+      "https://testnet.xrpl.org/transactions/602CD2D3863BCB4EBA384ECB6915D3578ED51647063C5AA001347DD87FBAD0C3",
+      "https://testnet.xrpl.org/transactions/FBF1C905330ECCC696B5A8F6AAB4607ACF51DB36147697C1BEC9ECF574DF96DE"
+    ],
+    "submittedAt": "2026-10-25T05:32:54.076Z",
+    "validatedAt": "2026-10-25T05:32:59.710Z",
+    "mode": "batch",
+    "batchTxHash": "FBF1C905330ECCC696B5A8F6AAB4607ACF51DB36147697C1BEC9ECF574DF96DE"
+  },
+  "events": [
+    {
+      "at": "2026-10-25T05:32:11.278Z",
+      "event": "tab.opened"
+    },
+    {
+      "at": "2026-10-25T05:32:11.283Z",
+      "event": "tab.item_added"
+    },
+    {
+      "at": "2026-10-25T05:32:11.286Z",
+      "event": "tab.item_added"
+    },
+    {
+      "at": "2026-10-25T05:32:11.288Z",
+      "event": "tab.item_added"
+    },
+    {
+      "at": "2026-10-25T05:32:11.290Z",
+      "event": "tab.item_added"
+    },
+    {
+      "at": "2026-10-25T05:32:11.293Z",
+      "event": "tab.item_added"
+    },
+    {
+      "at": "2026-10-25T05:32:43.294Z",
+      "event": "tab.exit_detected"
+    },
+    {
+      "at": "2026-10-25T05:32:43.324Z",
+      "event": "member.push"
+    },
+    {
+      "at": "2026-10-25T05:32:53.326Z",
+      "event": "tab.updated"
+    },
+    {
+      "at": "2026-10-25T05:32:53.326Z",
+      "event": "agent.decision"
+    },
+    {
+      "at": "2026-10-25T05:32:59.914Z",
+      "event": "tab.settled",
+      "txHash": "FBF1C905330ECCC696B5A8F6AAB4607ACF51DB36147697C1BEC9ECF574DF96DE"
+    }
+  ]
+}

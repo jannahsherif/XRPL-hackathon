@@ -6,7 +6,7 @@ import { Spinner } from "../components/ui";
 import { MOCK } from "../lib/config";
 import { shortName, useNow } from "../lib/format";
 import { useSettle } from "../lib/store";
-import { byOpenedDesc, canOrder, inGrace } from "../lib/tabs";
+import { byOpenedDesc, inGrace } from "../lib/tabs";
 import { Dashboard } from "./Dashboard";
 import { ManagerScreen } from "./Manager";
 import { MemberScreen } from "./Member";
@@ -60,9 +60,9 @@ export function Present() {
     return () => window.removeEventListener("keydown", onKey);
   }, [reset]);
 
-  // The member phone follows the latest live activity, else the tab in grace, else the newest open one.
+  // The member phone follows the first tab to leave (memberFocus), else a tab already in grace; until then it's idle.
   const tabs = [...(state?.tabs ?? [])].sort(byOpenedDesc);
-  const memberTab = memberFocus ?? tabs.find((t) => inGrace(t) || t.status === "reconciling")?.id ?? tabs.find(canOrder)?.id ?? null;
+  const memberTab = memberFocus ?? tabs.find((t) => inGrace(t) || t.status === "reconciling")?.id ?? null;
   const memberName = tabs.find((t) => t.id === memberTab)?.memberName;
   const waitingHold = phone === "member" && tabs.some((t) => t.status === "held");
 

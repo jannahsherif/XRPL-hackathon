@@ -10,7 +10,7 @@ import { clockTimeAmPm, codeLabel, countdown, duration, hasEscrow, itemCount, se
 import { toCents, tokens, usd } from "../lib/money";
 import { useSettle, type TabMeta } from "../lib/store";
 import { byOpenedDesc, graceLeft, inGrace } from "../lib/tabs";
-import { OPEN_STATUSES, type SettleState, type Tab } from "../lib/types";
+import { OPEN_STATUSES, type SettleState, type Settlement, type Tab } from "../lib/types";
 
 /**
  * Staff dashboard. `embedded` drops the sidebar for the presenter view, which also passes
@@ -40,6 +40,7 @@ function DashboardMain({ embedded = false, onOpenHold }: { embedded?: boolean; o
     else setParams(id ? { tab: id } : {}, { replace: true });
   };
   const now = useNow();
+  const recentSettle = useRecentSettle(now);
 
   if (!state) return <Loading connected={connected} />;
   const tabs = [...state.tabs].sort(byOpenedDesc);
@@ -60,10 +61,10 @@ function DashboardMain({ embedded = false, onOpenHold }: { embedded?: boolean; o
         </div>
       </header>
 
-      <Tiles state={state} />
+      <Tiles state={state} now={now} />
 
       <div className="flex min-h-0 flex-1 gap-5">
-        <TabsTable tabs={tabs} meta={meta} now={now} selectedId={selected?.id ?? null} onSelect={(id) => select(id === selectedId ? null : id)} />
+        <TabsTable tabs={tabs} meta={meta} now={now} selectedId={selected?.id ?? null} flashId={recentSettle?.tabId ?? null} onSelect={(id) => select(id === selectedId ? null : id)} />
         {selected && <TabDrawer key={selected.id} tab={selected} meta={meta[selected.id]} now={now} onClose={() => select(null)} onOpenHold={openHold} />}
       </div>
     </main>
@@ -78,14 +79,23 @@ function Loading({ connected }: { connected: boolean }) {
   );
 }
 
+/** How long the settle moment lasts: toast, row flash and tile glow. */
+const SETTLE_MOMENT_MS = 10_000;
+
+/** The live settle within the last SETTLE_MOMENT_MS, if any. */
+function useRecentSettle(now: number) {
+  const { lastSettled } = useSettle();
+  return lastSettled && now - Date.parse(lastSettled.at) < SETTLE_MOMENT_MS ? lastSettled : null;
+}
+
 /** "✓ E. Vance settled  $170.40 → 170.40 TUSD  3.0 s" for a few seconds after each live settle. */
 function SettledToast({ state }: { state: SettleState }) {
   const { lastSettled } = useSettle();
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    if (!lastSettled || Date.now() - Date.parse(lastSettled.at) > 15_000) return;
+    if (!lastSettled || Date.now() - Date.parse(lastSettled.at) > SETTLE_MOMENT_MS) return;
     setVisible(true);
-    const id = setTimeout(() => setVisible(false), 12_000);
+    const id = setTimeout(() => setVisible(false), SETTLE_MOMENT_MS);
     return () => clearTimeout(id);
   }, [lastSettled]);
   const tab = state.tabs.find((t) => t.id === lastSettled?.tabId);
@@ -118,9 +128,16 @@ function RailBadges({ state, connected }: { state: SettleState; connected: boole
 
 // Metric tiles ----------------------------------------------------------------
 
-function Tiles({ state }: { state: SettleState }) {
+function Tiles({ state, now }: { state: SettleState; now: number }) {
   const { lastSettled } = useSettle();
+  const recent = useRecentSettle(now);
   const { metrics, tabs } = state;
+  const latest =
+    tabs.find((t) => t.id === lastSettled?.tabId)?.settlement ??
+    tabs
+      .map((t) => t.settlement)
+      .filter((s): s is Settlement => Boolean(s))
+      .sort((a, b) => Date.parse(b.validatedAt ?? "") - Date.parse(a.validatedAt ?? ""))[0];
   const open = tabs.filter((t) => OPEN_STATUSES.includes(t.status));
   const escrowedOpen = open.filter(hasEscrow).length;
   const escrowed = tabs.filter(hasEscrow);
@@ -131,7 +148,8 @@ function Tiles({ state }: { state: SettleState }) {
       <Tile
         icon={<IconMembers size={26} />}
         label="Outstanding member balances"
-        value={<AnimatedNumber value={metrics.outstandingCents} format={(n) => usd(n, { trim: true })} />}
+        value={<AnimatedNumber value={metrics.outstandingCents} format={(n) => usd(n, { trim: true })} ms={1600} />}
+        glowKey={recent?.at}
         sub={lastSettled ? `↓ ${usd(lastSettled.toVenueCents, { trim: true })} · never became a receivable` : "never becomes a receivable"}
       />
       <Tile
@@ -155,15 +173,21 @@ function Tiles({ state }: { state: SettleState }) {
         icon={<IconCheckCircle size={26} />}
         label="Settled tonight"
         value={metrics.settledCount}
-        sub={metrics.settledCount ? `avg ${seconds(metrics.avgSettleMs)} · 1 ledger` : "none yet"}
+        sub={metrics.settledCount ? `avg ${seconds(metrics.avgSettleMs)} · ${ledgerCount(latest) === 1 ? "1 ledger" : "2 ledgers"}` : "none yet"}
       />
     </section>
   );
 }
 
-function Tile({ icon, label, value, sub }: { icon: ReactNode; label: string; value: ReactNode; sub: string }) {
+/** Ledgers the settle used: a Batch, or an EscrowFinish with nothing to refund, is one; finish then refund is two. */
+function ledgerCount(s?: Settlement): number {
+  return !s || s.mode === "batch" || !s.refundTxHash ? 1 : 2;
+}
+
+function Tile({ icon, label, value, sub, glowKey }: { icon: ReactNode; label: string; value: ReactNode; sub: string; glowKey?: string }) {
   return (
-    <div className="flex min-w-0 gap-4 rounded-2xl border border-stone/60 bg-paper px-5 py-5">
+    <div className="relative flex min-w-0 gap-4 rounded-2xl border border-stone/60 bg-paper px-5 py-5">
+      {glowKey && <span key={glowKey} className="animate-tile-glow pointer-events-none absolute inset-0 rounded-2xl" aria-hidden="true" />}
       <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-sage-soft text-midnight">{icon}</span>
       <div className="min-w-0">
         <Eyebrow className="text-graphite leading-5">{label}</Eyebrow>
@@ -176,7 +200,21 @@ function Tile({ icon, label, value, sub }: { icon: ReactNode; label: string; val
 
 // Live tabs table ---------------------------------------------------------------
 
-function TabsTable({ tabs, meta, now, selectedId, onSelect }: { tabs: Tab[]; meta: Record<string, TabMeta>; now: number; selectedId: string | null; onSelect: (id: string) => void }) {
+function TabsTable({
+  tabs,
+  meta,
+  now,
+  selectedId,
+  flashId,
+  onSelect,
+}: {
+  tabs: Tab[];
+  meta: Record<string, TabMeta>;
+  now: number;
+  selectedId: string | null;
+  flashId: string | null;
+  onSelect: (id: string) => void;
+}) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-stone/60 bg-paper">
       <div className="min-h-0 overflow-auto">
@@ -192,7 +230,7 @@ function TabsTable({ tabs, meta, now, selectedId, onSelect }: { tabs: Tab[]; met
           </thead>
           <tbody>
             {tabs.map((tab) => (
-              <TabRow key={tab.id} tab={tab} meta={meta[tab.id]} now={now} selected={tab.id === selectedId} onSelect={() => onSelect(tab.id)} />
+              <TabRow key={tab.id} tab={tab} meta={meta[tab.id]} now={now} selected={tab.id === selectedId} flash={tab.id === flashId} onSelect={() => onSelect(tab.id)} />
             ))}
           </tbody>
         </table>
@@ -202,7 +240,7 @@ function TabsTable({ tabs, meta, now, selectedId, onSelect }: { tabs: Tab[]; met
   );
 }
 
-function TabRow({ tab, meta, now, selected, onSelect }: { tab: Tab; meta?: TabMeta; now: number; selected: boolean; onSelect: () => void }) {
+function TabRow({ tab, meta, now, selected, flash, onSelect }: { tab: Tab; meta?: TabMeta; now: number; selected: boolean; flash: boolean; onSelect: () => void }) {
   const done = tab.status === "settled" || tab.status === "closed_manually";
   const held = tab.status === "held";
   const bg = held ? "bg-terracotta-soft" : selected ? "bg-sage-soft/70" : "hover:bg-linen/60";
@@ -216,7 +254,7 @@ function TabRow({ tab, meta, now, selected, onSelect }: { tab: Tab; meta?: TabMe
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect())}
       tabIndex={0}
       aria-selected={selected}
-      className={`cursor-pointer border-t border-stone/50 text-[16px] transition-colors outline-none focus-visible:bg-linen [&>td]:px-4 [&>td]:py-5 ${bg} ${text} ${selected && held ? "ring-2 ring-terracotta-line ring-inset" : ""}`}
+      className={`cursor-pointer border-t border-stone/50 text-[16px] transition-colors outline-none focus-visible:bg-linen [&>td]:px-4 [&>td]:py-5 ${bg} ${text} ${selected && held ? "ring-2 ring-terracotta-line ring-inset" : ""} ${flash ? "animate-settle-flash" : ""}`}
     >
       <td className={`font-medium whitespace-nowrap ${edge} ${done && !selected ? "" : "text-midnight"}`}>{shortName(tab.memberName)}</td>
       <td className="whitespace-nowrap">{tab.seat}</td>
