@@ -2,6 +2,8 @@
 
 Walked step by step on `main` against the stub; the testnet-only differences are marked **(testnet)**. Names are the current seed: t1 = **E. Vance · Bar 3**, t5 = **J. Pike · Library 2**.
 
+**Hands-free option:** after pre-flight, `cd web && npm run demo:autopilot` drives sections 1 and 2 in its own 1920×1080 Chrome window (visible cursor, click ripples, hotkey badges), waiting for each settle and pausing at the narration points. Record that window. Add `-- --step` to advance each narration point with Enter, or `-- --pause 1.5` for longer pauses. It refuses to start unless t1 and t5 are fresh and escrowed.
+
 ## 0. Pre-flight (≈2 min)
 
 1. Stop any running API (Ctrl-C in its terminal; `lsof -iTCP:8080 -sTCP:LISTEN` shows nothing) → port 8080 is free.
