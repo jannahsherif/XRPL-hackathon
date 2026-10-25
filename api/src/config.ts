@@ -50,3 +50,13 @@ export const config = {
 };
 
 export type Config = typeof config;
+
+/**
+ * On AWS the API is public, so staff routes must be locked: refuse to start without STAFF_TOKEN.
+ * ECS sets AWS_EXECUTION_ENV (AWS_ECS_FARGATE) in every task; locally it is unset and the routes stay open.
+ */
+export function requireStaffTokenOnAws(cfg: Pick<Config, "staffToken">, env: NodeJS.ProcessEnv = process.env): void {
+  if (!cfg.staffToken && env.AWS_EXECUTION_ENV) {
+    throw new Error(`STAFF_TOKEN is required on AWS (${env.AWS_EXECUTION_ENV}): add it to the settle/<stage>/ledger-env secret`);
+  }
+}

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { requireStaffTokenOnAws } from "../src/config.js";
 import { expandLedgerEnv } from "../src/env.js";
 
 describe("expandLedgerEnv", () => {
@@ -32,6 +33,14 @@ describe("expandLedgerEnv", () => {
 
   it.each(["not json", "[1,2]", "null", '"string"'])("rejects %j", (raw) => {
     expect(() => expandLedgerEnv({ LEDGER_ENV_JSON: raw })).toThrow(/LEDGER_ENV_JSON/);
+  });
+});
+
+describe("requireStaffTokenOnAws", () => {
+  it("refuses an unset STAFF_TOKEN on AWS only", () => {
+    expect(() => requireStaffTokenOnAws({ staffToken: "" }, { AWS_EXECUTION_ENV: "AWS_ECS_FARGATE" })).toThrow(/STAFF_TOKEN is required on AWS/);
+    expect(() => requireStaffTokenOnAws({ staffToken: "s3cret" }, { AWS_EXECUTION_ENV: "AWS_ECS_FARGATE" })).not.toThrow();
+    expect(() => requireStaffTokenOnAws({ staffToken: "" }, {})).not.toThrow();
   });
 });
 

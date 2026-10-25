@@ -57,7 +57,7 @@ Then open `http://localhost:8080/state` and stream `curl -N http://localhost:808
 | `AGENT_MODE` | `local` | `agentcore` calls the deployed settlement agent (`AGENT_RUNTIME_ARN`, `AGENT_QUALIFIER=live`) |
 | `AGENT_TIMEOUT_MS` | `8000` | After this, the deterministic fallback decides |
 | `CORS_ORIGIN` | `*` | Comma-separated origins for the frontend |
-| `STAFF_TOKEN` | unset | Staff routes (approve, reject, close, `PATCH /policy`, fund, `/demo/reset`) need it as the `X-Staff-Token` header; unset leaves them open and logs a warning at boot |
+| `STAFF_TOKEN` | unset | Staff routes (approve, reject, close, `PATCH /policy`, fund, `/demo/reset`) need it as the `X-Staff-Token` header. Locally, unset leaves them open and logs a warning at boot; on AWS (ECS sets `AWS_EXECUTION_ENV`) the API refuses to start without it |
 
 See [.env.example](.env.example).
 
@@ -166,7 +166,7 @@ gh release create v0.1.0 --target main --generate-notes                        #
 
 Or use **Releases → Draft a new release** in GitHub; tick "Set as a pre-release" for `dev`. Drafts don't deploy until they are published. The release tag versions the agent zip (`agent/<stage>/<tag>.zip`) and the image (`settle-api:<tag>`), so redeploying an older release rolls back. The job summary prints the HTTPS API URL. The first deploy takes about 10–15 minutes because CloudFront is created. To require approval before `prod`, add required reviewers to the `prod` environment under Settings → Environments.
 
-**Ledger keys and staff token:** store the ledger module's seeds and `STAFF_TOKEN` in one secret (the task expands it into its environment), then switch modes:
+**Ledger keys and staff token:** store the ledger module's seeds and `STAFF_TOKEN` in one secret (the task expands it into its environment), then switch modes. The task refuses to start without `STAFF_TOKEN`, so set it before publishing a release:
 
 ```bash
 aws secretsmanager put-secret-value --secret-id settle/dev/ledger-env \
