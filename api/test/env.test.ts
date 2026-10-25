@@ -52,10 +52,12 @@ describe("config", () => {
 
   const load = async () => (await import("../src/config.js")).config;
 
-  it("defaults to demo off, stub ledger, local agent and a 120 s grace", async () => {
+  it("defaults to demo off, stub ledger, local agent, intent off and a 120 s grace", async () => {
     vi.stubEnv("DEMO", "");
     vi.stubEnv("GRACE_SECONDS", undefined as unknown as string);
+    vi.stubEnv("INTENT_MODE", undefined as unknown as string);
     const config = await load();
+    expect(config.intentMode).toBe("off");
     expect(config.demo).toBe(false);
     expect(config.graceSeconds).toBe(120);
     expect(config.ledgerMode).toBe("stub");

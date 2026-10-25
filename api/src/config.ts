@@ -29,8 +29,8 @@ export const config = {
   outstandingSeedCents: Number(env.OUTSTANDING_SEED_CENTS ?? 34_218_000),
 
   // Mastercard integration ----------------------------------------------------
-  /** Verifiable Intent mandates: member authorizes the agent per tab; settlement must fit the mandate. */
-  intentMode: (env.INTENT_MODE ?? "on") as "on" | "off",
+  /** Verifiable Intent mandates: member authorizes the agent per tab; settlement must fit the mandate. Off for the demo. */
+  intentMode: (env.INTENT_MODE ?? "off") as "on" | "off",
   /** With LEDGER_MODE=ap4m: "simulated" runs the AP4M rules in memory; "live" uses the XRPL EVM Testnet. */
   ap4mNetwork: (env.AP4M_NETWORK ?? "simulated") as "simulated" | "live",
   ap4mApiUrl: env.AP4M_API_URL ?? "https://hackathon.ap4m.build",
