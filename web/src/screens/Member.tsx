@@ -12,7 +12,6 @@ import { useSettle, useTab } from "../lib/store";
 import { canOrder, graceLeft, inGrace } from "../lib/tabs";
 import type { Tab } from "../lib/types";
 
-const TIP_PRESETS = [18, 20, 25];
 
 /** /member/:tabId: the member's lock screen, framed as a phone. */
 export function MemberRoute() {
@@ -126,6 +125,8 @@ function PushCard({ tab, seconds }: { tab: Tab; seconds: number }) {
   const [disputing, setDisputing] = useState(false);
 
   const tipPct = picked ?? meta[tab.id]?.tipPct ?? policy.defaultTipPct;
+  // The choices the API offered in member.push; "Other" is appended below.
+  const options = meta[tab.id]?.push?.tipOptions ?? [policy.defaultTipPct];
   const tip = cappedTipCents(tab.totalCents, tipPct, tab.allowance);
   const balance = balances?.members[tab.memberId];
 
@@ -199,13 +200,13 @@ function PushCard({ tab, seconds }: { tab: Tab; seconds: number }) {
 
         {expanded && (
           <>
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {TIP_PRESETS.map((pct) => (
+            <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length + 1}, minmax(0, 1fr))` }}>
+              {options.map((pct) => (
                 <TipButton key={pct} selected={!other && tipPct === pct} disabled={settling} onClick={() => (setOther(false), setTip(pct))}>
                   {pct}%
                 </TipButton>
               ))}
-              <TipButton selected={other || !TIP_PRESETS.includes(tipPct)} disabled={settling} onClick={() => setOther(true)}>
+              <TipButton selected={other || !options.includes(tipPct)} disabled={settling} onClick={() => setOther(true)}>
                 Other
               </TipButton>
             </div>
