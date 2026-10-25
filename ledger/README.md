@@ -13,12 +13,14 @@ npm run setup:accounts   # faucet-funds issuer, venue, member-1..5; seeds -> .en
                          # creates only accounts missing from .env and appends their seeds; existing keys are never
                          # rewritten (pass -- --force to replace every account)
 npm run setup:token      # issues TUSD, opens trust lines, sets balances to SEED_BALANCES. Idempotent
+npm run setup:credentials  # issues and accepts a CLUB_MEMBER credential for member-1..5. Idempotent
+npm run revoke:credential -- member-4  # deletes one member's credential (demo beat)
 npm run check:rlusd      # does the testnet RLUSD issuer allow trust-line locking? (prints yes/no)
 
 npm run demo:reset       # closes every open tab escrow, then sets every balance back to SEED_BALANCES
 npm run demo:happy-path  # openTab -> wait for FinishAfter -> settleTab, prints hashes, amounts, timings
 
-npm test                 # amount math, runtime keys, escrowSeq validation (no network)
+npm test                 # amount math, runtime keys, escrowSeq validation, credential check (no network)
 npm run typecheck
 ```
 
@@ -33,6 +35,31 @@ To add a member, append its ID to `MEMBER_IDS` and `SEED_BALANCES`, then run `se
 `setup:token`.
 
 Every transaction is logged as one line: `[ledger] <TransactionType> <hash> <result> ledger=<index>`.
+
+## Credentials
+
+**Pitch:** membership is an XRPL Credential. The club issues each member a `CLUB_MEMBER` credential
+on the ledger, the member accepts it, and only a credentialed member can open a tab.
+
+- `npm run setup:credentials`: the issuer sends a `CredentialCreate` (type `CLUB_MEMBER`, hex
+  `434C55425F4D454D424552`, no expiration) to member-1..5 and each member sends `CredentialAccept`.
+  Members who already hold an accepted credential are skipped; re-running restores a revoked one.
+- `npm run revoke:credential -- member-4`: the issuer sends `CredentialDelete`. member-4 can no
+  longer open a tab: `openTab` throws `INVALID_INPUT` "member is not credentialed", and the API
+  answers `403 {code: "NOT_CREDENTIALED"}`.
+- `openTab` looks up the credential (`ledger_entry`) before the EscrowCreate and needs it accepted
+  and unexpired. A confirmed credential is trusted for 60 s; a refusal is re-checked every time,
+  so a re-issued credential counts at once, while a revoked one can still pass for up to 60 s if
+  that member opened a tab in the last minute. `getBalances()` reports `credentialed` per member.
+
+## Pre-demo checklist
+
+1. `npm run setup:credentials` so every member is credentialed again after any rehearsal revoke.
+2. `npm run demo:happy-path`, then `npm run demo:reset`: one green run against testnet, then
+   balances back to `SEED_BALANCES` with no open escrows.
+3. Start the API on the laptop: `cd ../api && LEDGER_MODE=module SEED_LIVE_ESCROWS=1 npm run dev`,
+   and wait for the two `escrow_opened` events (t1, t5) before going on stage.
+4. On stage, don't exit a tab opened live within 30 s; the settle would just wait for FinishAfter.
 
 ## Why TUSD, not RLUSD
 
@@ -66,7 +93,8 @@ Times are ISO 8601 strings.
 
 ### `openTab({ memberId, allowance })`
 
-Escrows `allowance` from the member to the venue. `FinishAfter` = now + 20 s, `CancelAfter` = now + 8 h.
+Escrows `allowance` from the member to the venue, if the member holds an accepted `CLUB_MEMBER`
+credential (see Credentials). `FinishAfter` = now + 20 s, `CancelAfter` = now + 8 h.
 rippled rejects an EscrowCreate with `tecNO_PERMISSION` if `FinishAfter` has already passed when it
 lands, and a transaction lands 3.5–7 s after submit with close times rounded to 10 s; 20 s leaves room.
 
@@ -106,8 +134,9 @@ EscrowCancel (`via: 'EscrowCancel'`) or the refund Payment (`via: 'refund'`).
 
 ### `getBalances()`
 
-`{ venue, members: { 'member-1': '5000', … } }`: trust-line balances on the last validated ledger.
-Tokens locked in open tabs are not included.
+`{ venue, members: { 'member-1': '5000', … }, credentialed: { 'member-1': true, … } }`: trust-line
+balances on the last validated ledger (tokens locked in open tabs are not included), and whether
+each member holds an accepted `CLUB_MEMBER` credential, looked up fresh.
 
 ### `explorerUrl(hash)`
 
@@ -124,7 +153,7 @@ a plain `Error` without a `code`.
 | `INSUFFICIENT_FUNDS` | member can't cover the allowance, or `amount + tipAmount` exceeds it |
 | `ESCROW_NOT_FOUND` | no open escrow for that `memberId` + `escrowSeq` (already settled/cancelled) |
 | `LEDGER_TIMEOUT` | not validated before `LastLedgerSequence` (~35–45 s), or no connection |
-| `INVALID_INPUT` | unknown `memberId`, an `escrowSeq` that isn't a positive integer, or an amount that isn't a plain decimal string |
+| `INVALID_INPUT` | unknown `memberId`, a member without a `CLUB_MEMBER` credential ("member is not credentialed"), an `escrowSeq` that isn't a positive integer, or an amount that isn't a plain decimal string |
 | `LEDGER_REJECTED` | any other ledger failure, including settling an expired escrow (use `cancelTab`) |
 
 ## Timing
