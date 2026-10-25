@@ -178,6 +178,17 @@ describe("exit and grace", () => {
     expect(ofType("tab.grace_tick").map((e) => (e.data as { secondsLeft: number }).secondsLeft)).toEqual([9, 8, 7]);
   });
 
+  it("counts down to 0, and the 0 arrives before reconciling", async () => {
+    const { service, tab, events, ofType } = await openedTab();
+    service.exit(tab.id);
+    await runGrace();
+    expect(ofType("tab.grace_tick").map((e) => (e.data as { secondsLeft: number }).secondsLeft)).toEqual([9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
+    const zero = events.findIndex((e) => e.type === "tab.grace_tick" && (e.data as { secondsLeft: number }).secondsLeft === 0);
+    const reconciling = events.findIndex((e) => e.type === "tab.updated" && (e.data as { change: string }).change === "reconciling");
+    expect(zero).toBeGreaterThan(-1);
+    expect(zero).toBeLessThan(reconciling);
+  });
+
   it("asks the agent during grace, not after", async () => {
     const agent = fixedAgent();
     const { service, tab } = await openedTab(makeService({ agent }));

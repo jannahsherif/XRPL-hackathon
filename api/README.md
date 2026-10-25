@@ -82,7 +82,7 @@ How the API maps onto the ledger module ([src/ledger/teamLedger.ts](src/ledger/t
 
 - **Seeded escrows:** `SEED_LIVE_ESCROWS=1` opens real escrows only for the two stage tabs, `t1` (m1's demo tab) and `t5` (m5's anomaly tab). The other four stay display-only (`seq: null`) and hold with `ESCROW_NOT_FOUND` if exited.
 - **Timing:** `openTab` takes 3–6 s, and settling waits for FinishAfter (up to about 15 s after open) plus 3.5–7 s to validation. Don't exit a tab within 15 s of opening it.
-- **Error codes to HTTP:** `INVALID_INPUT` 400, `INSUFFICIENT_FUNDS` 402, `ESCROW_NOT_FOUND` 409, `LEDGER_REJECTED` 502, `LEDGER_TIMEOUT` 504. Responses look like `{ error, code }`.
+- **Error codes to HTTP:** `INVALID_INPUT` 400, `INSUFFICIENT_FUNDS` 402, `ESCROW_NOT_FOUND` 409, `LEDGER_REJECTED` 502, `LEDGER_TIMEOUT` 504. Responses look like `{ error, code }`. Close and reject map the escrow cancel's code the same way.
 - **Restoring balances:** `/demo/reset` cancels live tabs but doesn't restore balances. `npm run demo:reset` in `ledger/` does.
 - **In AWS:** put `VENUE_SEED` and `MEMBER_1_SEED`…`MEMBER_5_SEED` in `settle/<stage>/ledger-env`, never `ISSUER_SEED`.
 
@@ -113,7 +113,7 @@ Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or me
 
 **Staff routes.** With `STAFF_TOKEN` set, approve, reject, close, `PATCH /policy`, `POST /members/:id/fund` and `POST /demo/reset` need an `X-Staff-Token` header with that value, or they return `401 {error, code: "UNAUTHORIZED"}`. Reads, `POST /tabs`, items, exit, tip, dispute and `/events` stay open for the member phone and the POS. The `/demo/*` routes only exist with `DEMO=1`.
 
-**Events.** Each SSE message uses its type as the SSE `event:` name, so use `es.addEventListener("tab.settled", ...)`. The data is `{type, at, data}`. On connect the stream sends one `snapshot` event with the full state.
+**Events.** Each SSE message uses its type as the SSE `event:` name, so use `es.addEventListener("tab.settled", ...)`. The data is `{type, at, data}`. On connect the stream sends one `snapshot` event whose `data` is the full state, in the same envelope.
 
 | Event | `data` |
 |---|---|
@@ -121,7 +121,7 @@ Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or me
 | `tab.item_added` | `{tab, item, headroomCents}` |
 | `tab.exit_detected` | `{tab}` |
 | `member.push` | `{tabId, memberId, memberName, items, totalCents, suggestedTipPct, tipOptions, graceEndsAt, secondsLeft}` |
-| `tab.grace_tick` | `{tabId, secondsLeft}` |
+| `tab.grace_tick` | `{tabId, secondsLeft}`, once a second down to `0`, which arrives just before `reconciling` |
 | `agent.decision` | `{tabId, action, tipPct, reason, source: rules \| agent \| fallback}` |
 | `tab.held` | `{tab, hold}` |
 | `tab.settled` | `{tab, settlement, explorerUrls, decision}` |

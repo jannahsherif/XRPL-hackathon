@@ -214,7 +214,8 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
       ...corsHeaders(req.headers.origin, config.corsOrigin),
     });
     const send = (type: string, data: unknown) => reply.raw.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
-    send("snapshot", service.snapshot());
+    // Same {type, at, data} envelope as every other event.
+    send("snapshot", { type: "snapshot", at: new Date().toISOString(), data: service.snapshot() });
     if (req.query.replay === "1") for (const event of bus.history()) send(event.type, event);
     const unsubscribe = bus.subscribe((event) => send(event.type, event));
     // Heartbeats keep ALB/CloudFront from closing an idle stream.

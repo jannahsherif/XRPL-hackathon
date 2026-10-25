@@ -91,7 +91,11 @@ describe("GET /events (SSE)", () => {
   it("sends a snapshot first", async () => {
     const sse = await connect();
     const [snapshot] = await sse.waitFor("snapshot");
-    expect(snapshot.data).toMatchObject({ tabs: expect.any(Array), metrics: { outstandingCents: 34218000 } });
+    expect(snapshot.data).toMatchObject({
+      type: "snapshot",
+      at: expect.any(String),
+      data: { tabs: expect.any(Array), metrics: { outstandingCents: 34218000 } },
+    });
     expect(sse.messages[0].event).toBe("snapshot");
   });
 

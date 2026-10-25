@@ -176,10 +176,12 @@ export class SettleService {
 
     const tick = setInterval(() => {
       const secondsLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
-      this.bus.publish("tab.grace_tick", { tabId: tab.id, secondsLeft });
+      // The expiry sends the 0, so the countdown always ends on it before reconciling.
+      if (secondsLeft > 0) this.bus.publish("tab.grace_tick", { tabId: tab.id, secondsLeft });
     }, 1000);
     const expiry = setTimeout(() => {
       this.clearTimer(tab.id);
+      this.bus.publish("tab.grace_tick", { tabId: tab.id, secondsLeft: 0 });
       void this.reconcile(tab.id);
     }, graceSeconds * 1000);
     this.timers.set(tab.id, { tick, expiry });
@@ -388,7 +390,10 @@ export class SettleService {
       try {
         cancelTxHash = (await this.ledger.cancelTab({ tab: structuredClone(tab) })).txHash;
       } catch (err) {
-        throw new ConflictError(`Could not cancel escrow (${ledgerErrorCode(err)})`);
+        // Keep the ledger's code so HTTP maps it (LEDGER_TIMEOUT 504, LEDGER_REJECTED 502, ESCROW_NOT_FOUND 409).
+        const code = (err as { code?: string }).code;
+        if (!code) throw new ConflictError(`Could not cancel escrow (${ledgerErrorCode(err)})`);
+        throw Object.assign(new Error(`Could not cancel escrow (${code}): ${(err as Error).message}`), { code });
       }
     }
     this.move(tab, "closed_manually");

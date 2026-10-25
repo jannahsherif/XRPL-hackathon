@@ -218,6 +218,30 @@ describe("dispute / approve / reject / close", () => {
     expect((await post(`/tabs/${id}/close`)).statusCode).toBe(409);
   });
 
+  it.each([
+    ["LEDGER_TIMEOUT", 504],
+    ["LEDGER_REJECTED", 502],
+    ["ESCROW_NOT_FOUND", 409],
+  ])("close and reject map a %s cancel failure to %i and leave the tab as it was", async (code, status) => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ cancelTab: vi.fn().mockRejectedValue(Object.assign(new Error("boom"), { code })) }) });
+    const { id } = await openTab();
+    const closed = await post(`/tabs/${id}/close`);
+    expect(closed.statusCode).toBe(status);
+    expect(closed.json()).toMatchObject({ code, error: expect.stringContaining(`Could not cancel escrow (${code})`) });
+    await post(`/tabs/${id}/dispute`);
+    const rejected = await post(`/tabs/${id}/reject`);
+    expect(rejected.statusCode).toBe(status);
+    expect((await get(`/tabs/${id}`)).json().status).toBe("held");
+  });
+
+  it("close is 409 when the cancel fails without a ledger code", async () => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ cancelTab: vi.fn().mockRejectedValue(new Error("socket hang up")) }) });
+    const { id } = await openTab();
+    expect((await post(`/tabs/${id}/close`)).statusCode).toBe(409);
+  });
+
   it.each(["exit", "tip", "dispute", "approve", "reject", "close"])("%s is 404 for an unknown tab", async (action) => {
     expect((await post(`/tabs/ghost/${action}`, { pct: 10 })).statusCode).toBe(404);
   });
