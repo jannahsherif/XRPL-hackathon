@@ -131,6 +131,8 @@ export interface Member {
   card: CardOnFile;
   /** Prefunded balance from card top-ups (SIMULATED Mastercard funding rail). */
   fundedCents: number;
+  /** Holds an accepted CLUB_MEMBER XRPL Credential (L7). Only credentialed members can open a tab. */
+  credentialed: boolean;
 }
 
 export interface MenuItem {
@@ -226,7 +228,8 @@ export interface Ledger {
   /** `amount` is the tab total WITHOUT the tip; the member gets back allowance - amount - tipAmount. */
   settleTab(args: { tab: Tab; amount: string; tipAmount: string }): Promise<SettleTabResult>;
   cancelTab(args: { tab: Tab }): Promise<{ txHash: string }>;
-  getBalances(): Promise<{ venue: string; members: Record<string, string> }>;
+  /** `credentialed` per member when the ledger tracks credentials (module and stub modes). */
+  getBalances(): Promise<{ venue: string; members: Record<string, string>; credentialed?: Record<string, boolean> }>;
 }
 
 export type LedgerErrorCode = "INSUFFICIENT_FUNDS" | "ESCROW_NOT_FOUND" | "LEDGER_TIMEOUT" | "LEDGER_REJECTED" | "INVALID_INPUT";

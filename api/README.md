@@ -98,7 +98,7 @@ How the API maps onto the ledger module ([src/ledger/teamLedger.ts](src/ledger/t
 | Method and path | Does |
 |---|---|
 | `GET /state` | Full snapshot: tabs, members, metrics, menu, policy, mode |
-| `POST /tabs {memberId, seat?}` | Opens a tab and escrows the member's tier allowance (`201`) |
+| `POST /tabs {memberId, seat?}` | Opens a tab and escrows the member's tier allowance (`201`); `403 {code: "NOT_CREDENTIALED"}` for a member without a CLUB_MEMBER credential |
 | `POST /tabs/:id/items {menuItemId, qty}` | Adds a line item (fake POS) |
 | `POST /tabs/:id/exit` | Starts grace and emits `member.push` |
 | `POST /tabs/:id/tip {pct}` | Member picks a tip during grace (0–30) |
@@ -134,6 +134,7 @@ Notes on the contract:
 - The tab object has exactly the fields in the contract. `tab.updated` is the one additive event type.
 - Everything a settled tab shows is on the tab itself, so `GET /state` after a reload has it: `settlement.explorerUrls` (finish, refund if any, Batch if batched), `settlement.submittedAt`/`validatedAt`, and the open's `escrow.submittedAt`/`validatedAt` (module mode; the stub omits the timestamps).
 - Outstanding balances start at $342,180.00 and drop by `toVenue` on every settle.
+- Each member has `credentialed` (an accepted CLUB_MEMBER XRPL Credential, see `ledger/README.md`). With the real ledger it comes from testnet at boot and reset, and is re-checked whenever a member last seen uncredentialed tries to open a tab. `m6` (Casey Moreau) is a lapsed, display-only member who is never credentialed, so the refusal can be shown in stub mode.
 
 ## Deploy to AWS
 

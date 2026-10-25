@@ -19,6 +19,12 @@ export class ConflictError extends Error {
   readonly statusCode = 409;
 }
 
+/** L7: the member holds no accepted CLUB_MEMBER credential, so they cannot open a tab. */
+export class NotCredentialedError extends Error {
+  readonly statusCode = 403;
+  readonly code = "NOT_CREDENTIALED";
+}
+
 interface GraceTimer {
   tick: NodeJS.Timeout;
   expiry: NodeJS.Timeout;
@@ -107,7 +113,20 @@ export class SettleService {
   async openTab(memberId: string, seat?: string): Promise<Tab> {
     const member = this.members.get(memberId);
     if (!member) throw new NotFoundError(`Unknown member ${memberId}`);
-    const escrow = await this.ledger.openTab({ memberId, allowance: member.allowance });
+    // L7: one fresh check for a member last seen uncredentialed, so a re-issued credential counts at once.
+    if (!member.credentialed) await this.refreshCredentials();
+    if (!member.credentialed) throw new NotCredentialedError(`${member.name} is not a credentialed member`);
+    let escrow: OpenTabResult;
+    try {
+      escrow = await this.ledger.openTab({ memberId, allowance: member.allowance });
+    } catch (err) {
+      // The ledger has the last word (a credential revoked since we looked).
+      if (isNotCredentialed(err)) {
+        member.credentialed = false;
+        throw new NotCredentialedError(`${member.name} is not a credentialed member`);
+      }
+      throw err;
+    }
     const tab: Tab = {
       id: `t${++this.tabCounter}`,
       memberId,
@@ -251,6 +270,9 @@ export class SettleService {
     await Promise.allSettled(live.map((tab) => this.ledger.cancelTab({ tab })));
     this.bus.clear();
     this.seed();
+    if (this.config.ledgerMode === "module") {
+      await this.refreshCredentials().catch((err) => console.warn(`credential refresh failed: ${(err as Error).message}`));
+    }
     this.bus.publish("tab.updated", { change: "reset", state: this.snapshot() });
     this.publishMetrics();
     if (this.seedsLiveEscrows) await this.openSeedEscrows();
@@ -279,6 +301,13 @@ export class SettleService {
         console.warn(`seed escrow for ${tab.id} failed: ${ledgerErrorCode(err)}`);
       }
     }
+  }
+
+  /** L7: take each member's credential status from the ledger, when it tracks credentials. */
+  async refreshCredentials(): Promise<void> {
+    const { credentialed } = await this.ledger.getBalances();
+    if (!credentialed) return;
+    for (const member of this.members.values()) member.credentialed = credentialed[member.id] ?? false;
   }
 
   /** Top up a member's budget from their Mastercard card on file (SIMULATED funding rail). */
@@ -474,6 +503,10 @@ function assertTransitionOrThrow(from: TabStatus, to: TabStatus): void {
   } catch (err) {
     throw new ConflictError((err as Error).message);
   }
+}
+
+function isNotCredentialed(err: unknown): boolean {
+  return (err as { code?: string }).code === "INVALID_INPUT" && /not credentialed/.test((err as Error).message);
 }
 
 function escrowOf(opened: OpenTabResult): Escrow {

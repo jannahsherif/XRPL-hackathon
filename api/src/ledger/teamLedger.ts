@@ -18,7 +18,7 @@ export interface TeamLedgerModule {
   openTab(args: { memberId: string; allowance: string }): Promise<OpenTabResult>;
   settleTab(args: { tab: TeamLedgerTab; amount: string; tipAmount: string }): Promise<SettleTabResult>;
   cancelTab(args: { tab: TeamLedgerTab }): Promise<{ txHash: string }>;
-  getBalances(): Promise<{ venue: string; members: Record<string, string> }>;
+  getBalances(): Promise<{ venue: string; members: Record<string, string>; credentialed?: Record<string, boolean> }>;
 }
 
 /** m1 -> member-1. Anything else passes through unchanged. */
@@ -48,8 +48,9 @@ export function adaptTeamLedger(mod: TeamLedgerModule): Ledger {
     settleTab: async ({ tab, amount, tipAmount }) => mod.settleTab({ tab: ledgerTab(tab), amount, tipAmount }),
     cancelTab: async ({ tab }) => mod.cancelTab({ tab: ledgerTab(tab) }),
     async getBalances() {
-      const { venue, members } = await mod.getBalances();
-      return { venue, members: Object.fromEntries(Object.entries(members).map(([id, v]) => [fromLedgerMemberId(id), v])) };
+      const { venue, members, credentialed } = await mod.getBalances();
+      const byApiId = <T>(map: Record<string, T>) => Object.fromEntries(Object.entries(map).map(([id, v]) => [fromLedgerMemberId(id), v]));
+      return { venue, members: byApiId(members), ...(credentialed ? { credentialed: byApiId(credentialed) } : {}) };
     },
   };
 }

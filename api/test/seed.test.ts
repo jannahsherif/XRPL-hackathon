@@ -4,9 +4,14 @@ import { decimalToCents } from "../src/money.js";
 import { SEED_MEMBERS, SEED_MENU, SEED_POLICY, SEED_TABS } from "../src/seed.js";
 
 describe("seed data (plan B8)", () => {
-  it("has 5 members and 6 open tabs", () => {
-    expect(SEED_MEMBERS).toHaveLength(5);
+  it("has 6 members and 6 open tabs", () => {
+    expect(SEED_MEMBERS).toHaveLength(6);
     expect(SEED_TABS).toHaveLength(6);
+  });
+
+  it("credentials m1-m5; m6 is the lapsed, display-only member with no tab", () => {
+    expect(SEED_MEMBERS.filter((m) => m.credentialed).map((m) => m.id)).toEqual(["m1", "m2", "m3", "m4", "m5"]);
+    expect(SEED_TABS.some((t) => t.memberId === "m6")).toBe(false);
   });
 
   it("uses unique ids", () => {

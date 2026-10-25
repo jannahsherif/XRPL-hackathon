@@ -31,6 +31,7 @@ export const ERROR_STATUS: Record<string, number> = {
   BUDGET_EXCEEDED: 402,
   OVER_CAP: 402,
   KYA_REJECTED: 403,
+  NOT_CREDENTIALED: 403,
   ESCROW_NOT_FOUND: 409,
   CHANNEL_NOT_FOUND: 409,
   CHANNEL_CLOSED: 409,
@@ -234,6 +235,8 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
   });
 
   if (service.seedsLiveEscrows) void service.openSeedEscrows();
+  // L7: with the real ledger, credential status lives on testnet.
+  if (config.ledgerMode === "module") void service.refreshCredentials().catch((err) => app.log.warn(`credential refresh failed: ${(err as Error).message}`));
 
   return { app, service, bus, mastercard };
 }

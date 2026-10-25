@@ -29,18 +29,8 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T20:46:38.844Z",
-      "mandate": {
-        "id": "3ac8cb15-3889-4442-b587-76629a0395a8",
-        "hash": "sha256:0a0652565db613e6ac25027e61f63b6e58a70ff420cd025e0deb943139853d9e",
-        "maxAmount": "1000.00",
-        "currency": "USD",
-        "payee": "venue:settle-demo",
-        "agent": "0x8573bcc0497A539851e01fba0AC6dbcEea8ECaE5",
-        "expiresAt": "2026-10-25T09:38:38.000Z",
-        "status": "active",
-        "paymentRecordHash": null
-      },
+      "openedAt": "2026-10-25T00:53:46.551Z",
+      "mandate": null,
       "ap4m": null
     },
     {
@@ -72,18 +62,8 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T20:57:38.845Z",
-      "mandate": {
-        "id": "b66e5623-f198-4858-ad3a-1f1b4a556529",
-        "hash": "sha256:8e6027ac5e5bc6aa8486acf824246ba3f38603d604b93fc43f4908a15691ba96",
-        "maxAmount": "600.00",
-        "currency": "USD",
-        "payee": "venue:settle-demo",
-        "agent": "0x8573bcc0497A539851e01fba0AC6dbcEea8ECaE5",
-        "expiresAt": "2026-10-25T09:38:38.000Z",
-        "status": "active",
-        "paymentRecordHash": null
-      },
+      "openedAt": "2026-10-25T01:04:46.551Z",
+      "mandate": null,
       "ap4m": null
     },
     {
@@ -104,18 +84,8 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T21:30:38.845Z",
-      "mandate": {
-        "id": "0ea2bf8a-45ed-44dd-b5a3-d8d484b1ea45",
-        "hash": "sha256:d2937dd03f80670cb72d7a63954f128c89c7d9e89c53d9024b78bc282f37b407",
-        "maxAmount": "600.00",
-        "currency": "USD",
-        "payee": "venue:settle-demo",
-        "agent": "0x8573bcc0497A539851e01fba0AC6dbcEea8ECaE5",
-        "expiresAt": "2026-10-25T09:38:38.000Z",
-        "status": "active",
-        "paymentRecordHash": null
-      },
+      "openedAt": "2026-10-25T01:37:46.551Z",
+      "mandate": null,
       "ap4m": null
     },
     {
@@ -147,18 +117,8 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T21:05:38.845Z",
-      "mandate": {
-        "id": "b8125a27-26de-4e5e-ad5e-d801ff488d97",
-        "hash": "sha256:54a607726f27dddf15bde0189e61cea35aadaed6d4241c6a566ad24eac1f8ed2",
-        "maxAmount": "300.00",
-        "currency": "USD",
-        "payee": "venue:settle-demo",
-        "agent": "0x8573bcc0497A539851e01fba0AC6dbcEea8ECaE5",
-        "expiresAt": "2026-10-25T09:38:38.000Z",
-        "status": "active",
-        "paymentRecordHash": null
-      },
+      "openedAt": "2026-10-25T01:12:46.551Z",
+      "mandate": null,
       "ap4m": null
     },
     {
@@ -190,18 +150,8 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T21:11:38.845Z",
-      "mandate": {
-        "id": "d304f91d-202e-4edc-b325-f3c6ab2db0d4",
-        "hash": "sha256:dd52a135e3b7f82d13dc05d399c14a874bc42a95417d20200d6b5d0d7016891d",
-        "maxAmount": "1000.00",
-        "currency": "USD",
-        "payee": "venue:settle-demo",
-        "agent": "0x8573bcc0497A539851e01fba0AC6dbcEea8ECaE5",
-        "expiresAt": "2026-10-25T09:38:38.000Z",
-        "status": "active",
-        "paymentRecordHash": null
-      },
+      "openedAt": "2026-10-25T01:18:46.551Z",
+      "mandate": null,
       "ap4m": null
     },
     {
@@ -233,18 +183,8 @@
       "settlement": null,
       "hold": null,
       "graceEndsAt": null,
-      "openedAt": "2026-10-24T20:49:38.845Z",
-      "mandate": {
-        "id": "f1e867e4-09f0-4e97-ad60-7e6249f1145f",
-        "hash": "sha256:ac1bcac172c946c2d71891a98c53a7393c2988fac2c59e86e94332d48ceca348",
-        "maxAmount": "1000.00",
-        "currency": "USD",
-        "payee": "venue:settle-demo",
-        "agent": "0x8573bcc0497A539851e01fba0AC6dbcEea8ECaE5",
-        "expiresAt": "2026-10-25T09:38:38.000Z",
-        "status": "active",
-        "paymentRecordHash": null
-      },
+      "openedAt": "2026-10-25T00:56:46.551Z",
+      "mandate": null,
       "ap4m": null
     }
   ],
@@ -278,7 +218,8 @@
         "last4": "5100",
         "srcDigitalCardId": "MVCTM15100000000000000US"
       },
-      "fundedCents": 0
+      "fundedCents": 0,
+      "credentialed": true
     },
     {
       "id": "m2",
@@ -305,7 +246,8 @@
         "last4": "5204",
         "srcDigitalCardId": "MVCTM25204000000000000US"
       },
-      "fundedCents": 0
+      "fundedCents": 0,
+      "credentialed": true
     },
     {
       "id": "m3",
@@ -336,7 +278,8 @@
         "last4": "5308",
         "srcDigitalCardId": "MVCTM35308000000000000US"
       },
-      "fundedCents": 0
+      "fundedCents": 0,
+      "credentialed": true
     },
     {
       "id": "m4",
@@ -359,7 +302,8 @@
         "last4": "5412",
         "srcDigitalCardId": "MVCTM45412000000000000US"
       },
-      "fundedCents": 0
+      "fundedCents": 0,
+      "credentialed": true
     },
     {
       "id": "m5",
@@ -386,7 +330,32 @@
         "last4": "5516",
         "srcDigitalCardId": "MVCTM55516000000000000US"
       },
-      "fundedCents": 0
+      "fundedCents": 0,
+      "credentialed": true
+    },
+    {
+      "id": "m6",
+      "name": "Casey Moreau",
+      "tier": "standard",
+      "allowance": "300.00",
+      "typicalSpendCents": 8500,
+      "history": [
+        {
+          "date": "2026-09-14",
+          "totalCents": 6800
+        },
+        {
+          "date": "2026-08-24",
+          "totalCents": 9945
+        }
+      ],
+      "card": {
+        "brand": "Mastercard",
+        "last4": "5620",
+        "srcDigitalCardId": "MVCTM65620000000000000US"
+      },
+      "fundedCents": 0,
+      "credentialed": false
     }
   ],
   "metrics": {
@@ -468,6 +437,6 @@
     "demo": false,
     "ledger": "stub",
     "agent": "local",
-    "intent": "on"
+    "intent": "off"
   }
 }

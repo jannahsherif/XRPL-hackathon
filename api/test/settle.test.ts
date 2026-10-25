@@ -160,7 +160,7 @@ describe("HTTP contract", () => {
     expect(state.statusCode).toBe(200);
     const body = state.json();
     expect(body.tabs).toHaveLength(6);
-    expect(body.members).toHaveLength(5);
+    expect(body.members).toHaveLength(6);
     expect(body.metrics.outstandingCents).toBe(34218000);
     expect(body.menu.some((m: { priceCents: number }) => m.priceCents === 90000)).toBe(true);
     expect(Object.keys(body.tabs[0]).sort()).toEqual(

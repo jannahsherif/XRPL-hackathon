@@ -32,7 +32,7 @@ describe("seed and snapshot", () => {
     const { service } = makeService();
     const state = service.snapshot();
     expect(state.tabs).toHaveLength(6);
-    expect(state.members).toHaveLength(5);
+    expect(state.members).toHaveLength(6);
     expect(state.menu.length).toBeGreaterThan(5);
     expect(state.policy.graceSeconds).toBe(10);
     expect(state.mode).toEqual({ demo: true, ledger: "stub", agent: "local", intent: "off" });

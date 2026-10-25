@@ -61,8 +61,8 @@ describe("member id mapping", () => {
     expect(fromLedgerMemberId(ledger)).toBe(api.startsWith("member-") ? `m${api.slice(7)}` : api);
   });
 
-  it("every seeded member maps to an account in ledger/accounts.json", () => {
-    for (const m of SEED_MEMBERS) expect(ACCOUNTS.members[toLedgerMemberId(m.id)]).toMatch(/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/);
+  it("every credentialed seeded member maps to an account in ledger/accounts.json", () => {
+    for (const m of SEED_MEMBERS.filter((s) => s.credentialed)) expect(ACCOUNTS.members[toLedgerMemberId(m.id)]).toMatch(/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/);
   });
 });
 
