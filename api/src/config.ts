@@ -15,6 +15,8 @@ export const config = {
   ledgerMode: (env.LEDGER_MODE ?? "stub") as "stub" | "module" | "ap4m",
   ledgerModule: env.LEDGER_MODULE ?? "../ledger/src/index.ts",
   ledgerStubDelayMs: Number(env.LEDGER_STUB_DELAY_MS ?? 3000),
+  /** Stub only: replay the real testnet hashes in this file (ledger demo:happy-path writes it) when it exists. */
+  ledgerFixture: env.LEDGER_FIXTURE ?? "../ledger/fixtures/happy-path.json",
   /** Open real escrows for the two stage tabs (t1, t5) at boot and after every reset (only with LEDGER_MODE=module). */
   seedLiveEscrows: env.SEED_LIVE_ESCROWS === "1",
   /** "local" uses the deterministic fallback; "agentcore" invokes the AgentCore Runtime. */

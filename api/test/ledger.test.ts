@@ -111,7 +111,23 @@ describe("stub ledger (contract-identical)", () => {
     const result = await ledger.settleTab({ tab: tab(), amount: "1.00", tipAmount: "0.00" });
     expect(result.elapsedMs).toBeGreaterThanOrEqual(25);
   });
+
+  it("replays a fixture's real hashes and explorer URLs, keeping its own amounts", async () => {
+    const ledger = createStubLedger(0, { m1: "1000.00" }, FIXTURE);
+    const opened = await ledger.openTab({ memberId: "m1", allowance: "500.00" });
+    expect(opened).toMatchObject({ txHash: "A".repeat(64), explorerUrl: "https://testnet.xrpl.org/transactions/" + "A".repeat(64), ledgerIndex: 21805593 });
+    const settled = await ledger.settleTab({ tab: tab(), amount: "106.00", tipAmount: "21.20" });
+    expect(settled).toMatchObject({ finishTxHash: "B".repeat(64), refundTxHash: "C".repeat(64), toVenue: "127.20", toMember: "372.80" });
+    expect(settled.explorerUrls).toEqual([`https://testnet.xrpl.org/transactions/${"B".repeat(64)}`, `https://testnet.xrpl.org/transactions/${"C".repeat(64)}`]);
+    const spent = await ledger.settleTab({ tab: tab(), amount: "500.00", tipAmount: "0.00" });
+    expect(spent.refundTxHash).toBeNull();
+  });
 });
+
+const FIXTURE = {
+  openTab: { txHash: "A".repeat(64), explorerUrl: `https://testnet.xrpl.org/transactions/${"A".repeat(64)}`, ledgerIndex: 21805593 },
+  settleTab: { finishTxHash: "B".repeat(64), refundTxHash: "C".repeat(64), explorerUrls: [] },
+};
 
 describe("loadLedger", () => {
   const writeModule = (source: string) => {
@@ -125,6 +141,18 @@ describe("loadLedger", () => {
     const ledger = await loadLedger(testConfig({ ledgerStubDelayMs: 0 }));
     const result = await ledger.openTab({ memberId: "m1", allowance: "100.00" });
     expect(result.txHash).toMatch(/^[0-9A-F]{64}$/);
+  });
+
+  it("has the stub replay the ledger fixture when the file exists, and ignores one without hashes", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "settle-fixture-"));
+    const good = path.join(dir, "happy-path.json");
+    const bad = path.join(dir, "bad.json");
+    writeFileSync(good, JSON.stringify(FIXTURE));
+    writeFileSync(bad, JSON.stringify({ openTab: {} }));
+    const replaying = await loadLedger(testConfig({ ledgerStubDelayMs: 0, ledgerFixture: good }));
+    expect((await replaying.openTab({ memberId: "m1", allowance: "100.00" })).txHash).toBe("A".repeat(64));
+    const fresh = await loadLedger(testConfig({ ledgerStubDelayMs: 0, ledgerFixture: bad }));
+    expect((await fresh.openTab({ memberId: "m1", allowance: "100.00" })).txHash).not.toBe("A".repeat(64));
   });
 
   it("imports a module with named exports", async () => {

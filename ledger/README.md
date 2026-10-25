@@ -18,7 +18,8 @@ npm run revoke:credential -- member-4  # deletes one member's credential (demo b
 npm run check:rlusd      # does the testnet RLUSD issuer allow trust-line locking? (prints yes/no)
 
 npm run demo:reset       # closes every open tab escrow, then sets every balance back to SEED_BALANCES
-npm run demo:happy-path  # openTab -> wait for FinishAfter -> settleTab, prints hashes, amounts, timings
+npm run demo:happy-path  # openTab -> wait for FinishAfter -> settleTab, prints hashes, amounts, timings;
+                         # on a pass writes fixtures/happy-path.json, which the API's stub ledger replays
 
 npm test                 # amount math, runtime keys, escrowSeq validation, credential check (no network)
 npm run typecheck

@@ -1,9 +1,10 @@
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { Config } from "../config.js";
 import type { Ledger } from "../types.js";
-import { createStubLedger } from "./stub.js";
+import { createStubLedger, type ReplayFixture } from "./stub.js";
 import { adaptTeamLedger, type TeamLedgerModule } from "./teamLedger.js";
 
 /** Stub funding mirrors the testnet balances in ledger/ (member-1..5: 5000 / 800 / 800 / 500 / 1200). */
@@ -21,7 +22,7 @@ const STUB_MEMBER_FUNDS: Record<string, string> = {
  */
 export async function loadLedger(config: Config): Promise<Ledger> {
   if (config.ledgerMode !== "module") {
-    return createStubLedger(config.ledgerStubDelayMs, STUB_MEMBER_FUNDS);
+    return createStubLedger(config.ledgerStubDelayMs, STUB_MEMBER_FUNDS, readFixture(config.ledgerFixture));
   }
   const resolved = path.resolve(process.cwd(), config.ledgerModule);
   const mod = await import(pathToFileURL(resolved).href);
@@ -32,6 +33,20 @@ export async function loadLedger(config: Config): Promise<Ledger> {
     }
   }
   return adaptTeamLedger(ledger as TeamLedgerModule);
+}
+
+/** The replay fixture when the file exists and has the hashes the stub needs; otherwise random hashes. */
+function readFixture(file: string): ReplayFixture | undefined {
+  const resolved = file && path.resolve(process.cwd(), file);
+  if (!resolved || !existsSync(resolved)) return undefined;
+  try {
+    const fixture = JSON.parse(readFileSync(resolved, "utf8")) as ReplayFixture;
+    if (fixture.openTab?.txHash && fixture.settleTab?.finishTxHash) return fixture;
+  } catch {
+    // fall through to the warning
+  }
+  console.warn(`ignoring ledger fixture ${resolved}: not a demo:happy-path fixture`);
+  return undefined;
 }
 
 export function ledgerErrorCode(err: unknown): string {
