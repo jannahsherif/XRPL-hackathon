@@ -47,8 +47,8 @@ export function MemberScreen({ tabId }: { tabId: string | null }) {
         </Card>
       ) : !tab ? (
         <Card>
-          <p className="font-serif text-[17px] text-midnight">No tab {tabId ? `“${tabId}”` : "to show yet"}.</p>
-          <p className="mt-1 text-[13px] text-graphite">Open one on the POS, then come back here.</p>
+          <p className="font-serif text-[17px] text-midnight">{tabId ? `No tab “${tabId}”.` : "Nothing yet."}</p>
+          <p className="mt-1 text-[13px] text-graphite">{tabId ? "Open one on the POS, then come back here." : "The phone lights up when a member leaves."}</p>
         </Card>
       ) : (
         <TabNotification tab={tab} now={now} />

@@ -14,6 +14,9 @@ import { OPEN_STATUSES, type MenuItem, type Tab } from "../lib/types";
 type Chip = "Drinks" | "Wine" | "Food" | "Bottles";
 const CHIPS: Chip[] = ["Drinks", "Wine", "Food", "Bottles"];
 
+// The seeded tab scenario A runs on (Eleanor Vance, Bar 3); the POS starts there.
+const STAGE_TAB = "t1";
+
 // A double tap within this window adds one item, not two.
 const TAP_DEBOUNCE_MS = 600;
 
@@ -48,9 +51,10 @@ function PosMain({ embedded = false }: { embedded?: boolean }) {
   const [newTab, setNewTab] = useState<"form" | "opening" | null>(null);
 
   const tabs = useMemo(() => [...(state?.tabs ?? [])].sort(byOpenedDesc), [state?.tabs]);
-  const fallback = tabs.find(canOrder)?.id ?? null;
-  const tabId = (embedded ? localTab : params.get("tab")) ?? fallback;
-  const tab = newTab ? undefined : tabs.find((t) => t.id === tabId);
+  // After a load or a reset (or if the chosen tab is gone) the terminal starts on the stage tab.
+  const fallback = tabs.find((t) => t.id === STAGE_TAB && canOrder(t)) ?? tabs.find(canOrder);
+  const chosen = tabs.find((t) => t.id === (embedded ? localTab : params.get("tab")));
+  const tab = newTab ? undefined : (chosen ?? fallback);
   const setTab = (id: string) => {
     setNewTab(null);
     if (embedded) setLocalTab(id);
