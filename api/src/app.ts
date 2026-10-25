@@ -1,5 +1,7 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+
 import cors from "@fastify/cors";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 
 import { createSettlementAgent, type SettlementAgent } from "./agent/settlementAgent.js";
 import type { Config } from "./config.js";
@@ -9,6 +11,7 @@ import { Wallet } from "ethers";
 import { AP4M_CONTRACTS, AP4M_NETWORK } from "./ap4m/network.js";
 import { encodePaymentSignature } from "./ap4m/x402.js";
 import { loadLedger } from "./ledger/index.js";
+import { toTwoDecimals } from "./money.js";
 import { buildMastercardStack } from "./mastercard.js";
 import { verifyPaymentRecord, type PaymentRecord } from "./intent/mandate.js";
 import { SettleService } from "./settleService.js";
@@ -80,20 +83,26 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
     service.dispute(req.params.id, req.body?.note),
   );
 
-  app.post<IdParams>("/tabs/:id/approve", async (req) => service.approve(req.params.id));
-  app.post<IdParams>("/tabs/:id/reject", async (req) => service.reject(req.params.id));
-  app.post<IdParams>("/tabs/:id/close", async (req) => service.close(req.params.id));
+  // Staff actions. Member and POS routes stay open: they only act on the caller's own tab.
+  const staffOnly = { preHandler: staffGuard(config.staffToken) };
+  app.post<IdParams>("/tabs/:id/approve", staffOnly, async (req) => service.approve(req.params.id));
+  app.post<IdParams>("/tabs/:id/reject", staffOnly, async (req) => service.reject(req.params.id));
+  app.post<IdParams>("/tabs/:id/close", staffOnly, async (req) => service.close(req.params.id));
 
   app.get("/metrics", async () => service.metrics());
 
   /** Ledger balances (venue + members) in token units, straight from the ledger module. */
-  app.get("/balances", async () => ledger.getBalances());
+  app.get("/balances", async () => {
+    const balances = await ledger.getBalances();
+    const members = Object.fromEntries(Object.entries(balances.members).map(([id, value]) => [id, toTwoDecimals(value)]));
+    return { ...balances, venue: toTwoDecimals(balances.venue), members };
+  });
 
   app.get("/policy", async () => service.snapshot().policy);
-  app.patch<{ Body: Record<string, unknown> }>("/policy", async (req) => service.updatePolicy(req.body ?? {}));
+  app.patch<{ Body: Record<string, unknown> }>("/policy", staffOnly, async (req) => service.updatePolicy(req.body ?? {}));
 
   // Mastercard: card funding (SIMULATED rail) -----------------------------------
-  app.post<IdParams & { Body: { amountCents?: number } }>("/members/:id/fund", async (req, reply) => {
+  app.post<IdParams & { Body: { amountCents?: number } }>("/members/:id/fund", staffOnly, async (req, reply) => {
     if (req.body?.amountCents === undefined) return reply.status(400).send({ error: "amountCents is required" });
     return reply.status(201).send(service.fundMember(req.params.id, Number(req.body.amountCents)));
   });
@@ -149,48 +158,51 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
     };
   });
 
-  /** Proof: spending past the funded cap is refused by the Agent and by the PaymentLedger. */
-  app.post<IdParams>("/demo/ap4m/over-cap/:id", async (req, reply) => {
-    if (!mastercard.ap4m) return reply.status(404).send({ error: "AP4M is not enabled (LEDGER_MODE=ap4m)" });
-    return mastercard.ap4m.attemptOverCap(service.getTab(req.params.id));
-  });
-
-  /** Proof: a Voucher from an agent that is not the Channel's KYA-registered Agent is refused. */
-  app.post<IdParams>("/demo/ap4m/unverified-agent/:id", async (req, reply) => {
-    if (!mastercard.ap4m) return reply.status(404).send({ error: "AP4M is not enabled (LEDGER_MODE=ap4m)" });
-    const tab = service.getTab(req.params.id);
-    if (!tab.ap4m) return reply.status(409).send({ error: "Tab has no AP4M Channel" });
-    const net = mastercard.ap4m.network;
-    const invoice = mastercard.ap4m.merchant.createInvoice({
-      tabId: `${tab.id}-impostor`,
-      invoiceId: `IMPOSTOR-${tab.id}`,
-      channelId: tab.ap4m.channelId,
-      amountWei: 1n,
-      resourceUrl: `${config.publicBaseUrl}/x402/tabs/${tab.id}-impostor/resource`,
-      content: { note: "impostor probe" },
+  // Demo-only routes exist only with DEMO=1.
+  if (config.demo) {
+    /** Proof: spending past the funded cap is refused by the Agent and by the PaymentLedger. */
+    app.post<IdParams>("/demo/ap4m/over-cap/:id", async (req, reply) => {
+      if (!mastercard.ap4m) return reply.status(404).send({ error: "AP4M is not enabled (LEDGER_MODE=ap4m)" });
+      return mastercard.ap4m.attemptOverCap(service.getTab(req.params.id));
     });
-    const required = await mastercard.ap4m.merchant.requirement(invoice);
-    const channel = await net.getChannel(tab.ap4m.channelId);
-    const voucher = { channelId: tab.ap4m.channelId, cumulativeAmount: channel.redeemedWei + 1n };
-    const impostor = Wallet.createRandom();
-    const signature = await impostor.signTypedData(net.domain, { Voucher: [{ name: "channelId", type: "bytes32" }, { name: "cumulativeAmount", type: "uint256" }] }, voucher);
-    const out = await mastercard.ap4m.merchant.handle({
-      tabId: invoice.tabId,
-      channelId: tab.ap4m.channelId,
-      paymentSignature: encodePaymentSignature({
-        x402Version: 2,
-        accepted: required.accepts[0],
-        payload: { voucher: { channelId: voucher.channelId, cumulativeAmount: voucher.cumulativeAmount.toString() }, agentSignature: signature },
-      }),
-    });
-    bus.publish("ap4m.rejected", { tabId: tab.id, probe: "unverified-agent", impostor: impostor.address, status: out.status, body: out.body });
-    return { impostor: impostor.address, merchantStatus: out.status, merchantResponse: out.body };
-  });
 
-  app.post("/demo/reset", async () => {
-    await service.reset();
-    return service.snapshot();
-  });
+    /** Proof: a Voucher from an agent that is not the Channel's KYA-registered Agent is refused. */
+    app.post<IdParams>("/demo/ap4m/unverified-agent/:id", async (req, reply) => {
+      if (!mastercard.ap4m) return reply.status(404).send({ error: "AP4M is not enabled (LEDGER_MODE=ap4m)" });
+      const tab = service.getTab(req.params.id);
+      if (!tab.ap4m) return reply.status(409).send({ error: "Tab has no AP4M Channel" });
+      const net = mastercard.ap4m.network;
+      const invoice = mastercard.ap4m.merchant.createInvoice({
+        tabId: `${tab.id}-impostor`,
+        invoiceId: `IMPOSTOR-${tab.id}`,
+        channelId: tab.ap4m.channelId,
+        amountWei: 1n,
+        resourceUrl: `${config.publicBaseUrl}/x402/tabs/${tab.id}-impostor/resource`,
+        content: { note: "impostor probe" },
+      });
+      const required = await mastercard.ap4m.merchant.requirement(invoice);
+      const channel = await net.getChannel(tab.ap4m.channelId);
+      const voucher = { channelId: tab.ap4m.channelId, cumulativeAmount: channel.redeemedWei + 1n };
+      const impostor = Wallet.createRandom();
+      const signature = await impostor.signTypedData(net.domain, { Voucher: [{ name: "channelId", type: "bytes32" }, { name: "cumulativeAmount", type: "uint256" }] }, voucher);
+      const out = await mastercard.ap4m.merchant.handle({
+        tabId: invoice.tabId,
+        channelId: tab.ap4m.channelId,
+        paymentSignature: encodePaymentSignature({
+          x402Version: 2,
+          accepted: required.accepts[0],
+          payload: { voucher: { channelId: voucher.channelId, cumulativeAmount: voucher.cumulativeAmount.toString() }, agentSignature: signature },
+        }),
+      });
+      bus.publish("ap4m.rejected", { tabId: tab.id, probe: "unverified-agent", impostor: impostor.address, status: out.status, body: out.body });
+      return { impostor: impostor.address, merchantStatus: out.status, merchantResponse: out.body };
+    });
+
+    app.post("/demo/reset", staffOnly, async () => {
+      await service.reset();
+      return service.snapshot();
+    });
+  }
 
   // Server-Sent Events. Each event is sent with its type as the SSE event name.
   app.get<{ Querystring: { replay?: string } }>("/events", (req, reply) => {
@@ -202,7 +214,8 @@ export async function buildApp(config: Config, deps: AppDeps = {}) {
       ...corsHeaders(req.headers.origin, config.corsOrigin),
     });
     const send = (type: string, data: unknown) => reply.raw.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
-    send("snapshot", service.snapshot());
+    // Same {type, at, data} envelope as every other event.
+    send("snapshot", { type: "snapshot", at: new Date().toISOString(), data: service.snapshot() });
     if (req.query.replay === "1") for (const event of bus.history()) send(event.type, event);
     const unsubscribe = bus.subscribe((event) => send(event.type, event));
     // Heartbeats keep ALB/CloudFront from closing an idle stream.
@@ -229,3 +242,18 @@ function corsHeaders(origin: string | undefined, allowed: string): Record<string
   if (allowed === "*") return { "access-control-allow-origin": origin ?? "*" };
   return origin && allowed.split(",").includes(origin) ? { "access-control-allow-origin": origin } : {};
 }
+
+/** preHandler for staff routes: 401 unless X-Staff-Token matches STAFF_TOKEN. With no STAFF_TOKEN set, the routes are open. */
+function staffGuard(token: string) {
+  const expected = sha256(token);
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!token) return;
+    const given = req.headers["x-staff-token"];
+    if (typeof given !== "string" || !timingSafeEqual(sha256(given), expected)) {
+      return reply.status(401).send({ error: "Missing or wrong X-Staff-Token", code: "UNAUTHORIZED" });
+    }
+  };
+}
+
+// Hashing first gives timingSafeEqual equal-length inputs whatever was sent.
+const sha256 = (value: string) => createHash("sha256").update(value).digest();

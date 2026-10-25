@@ -57,6 +57,7 @@ Then open `http://localhost:8080/state` and stream `curl -N http://localhost:808
 | `AGENT_MODE` | `local` | `agentcore` calls the deployed settlement agent (`AGENT_RUNTIME_ARN`, `AGENT_QUALIFIER=live`) |
 | `AGENT_TIMEOUT_MS` | `8000` | After this, the deterministic fallback decides |
 | `CORS_ORIGIN` | `*` | Comma-separated origins for the frontend |
+| `STAFF_TOKEN` | unset | Staff routes (approve, reject, close, `PATCH /policy`, fund, `/demo/reset`) need it as the `X-Staff-Token` header; unset leaves them open and logs a warning at boot |
 
 See [.env.example](.env.example).
 
@@ -76,11 +77,12 @@ How the API maps onto the ledger module ([src/ledger/teamLedger.ts](src/ledger/t
 | member ids `m1`–`m5` | `member-1`–`member-5` (`ledger/accounts.json`) |
 | `tab.escrow.seq` | top-level `{ memberId, escrowSeq }` on settle and cancel |
 | `amount` = tab total, `tipAmount` = tip | refund = allowance − amount − tip; spending past the allowance throws `INSUFFICIENT_FUNDS` (the hold rules catch it first) |
-| `tab.settlement` | also carries `submittedAt`, `validatedAt`, `mode` (`batch` or `sequential`) and `batchTxHash` |
+| `tab.settlement` | also carries `explorerUrls`, `submittedAt`, `validatedAt`, `mode` (`batch` or `sequential`) and `batchTxHash` |
+| `tab.escrow` | also carries the EscrowCreate's `submittedAt` and `validatedAt` |
 
 - **Seeded escrows:** `SEED_LIVE_ESCROWS=1` opens real escrows only for the two stage tabs, `t1` (m1's demo tab) and `t5` (m5's anomaly tab). The other four stay display-only (`seq: null`) and hold with `ESCROW_NOT_FOUND` if exited.
 - **Timing:** `openTab` takes 3–6 s, and settling waits for FinishAfter (up to about 15 s after open) plus 3.5–7 s to validation. Don't exit a tab within 15 s of opening it.
-- **Error codes to HTTP:** `INVALID_INPUT` 400, `INSUFFICIENT_FUNDS` 402, `ESCROW_NOT_FOUND` 409, `LEDGER_REJECTED` 502, `LEDGER_TIMEOUT` 504. Responses look like `{ error, code }`.
+- **Error codes to HTTP:** `INVALID_INPUT` 400, `INSUFFICIENT_FUNDS` 402, `ESCROW_NOT_FOUND` 409, `LEDGER_REJECTED` 502, `LEDGER_TIMEOUT` 504. Responses look like `{ error, code }`. Close and reject map the escrow cancel's code the same way.
 - **Restoring balances:** `/demo/reset` cancels live tabs but doesn't restore balances. `npm run demo:reset` in `ledger/` does.
 - **In AWS:** put `VENUE_SEED` and `MEMBER_1_SEED`…`MEMBER_5_SEED` in `settle/<stage>/ledger-env`, never `ISSUER_SEED`.
 
@@ -103,13 +105,15 @@ How the API maps onto the ledger module ([src/ledger/teamLedger.ts](src/ledger/t
 | `POST /tabs/:id/dispute {note?}` | Moves the tab to held |
 | `POST /tabs/:id/approve` / `/reject` | Manager decision on a held tab; reject returns the escrow and closes the tab |
 | `POST /tabs/:id/close` | Manual close by staff (escrow cancelled) |
-| `POST /demo/reset` | Reseeds everything and cancels open escrows |
+| `POST /demo/reset` | Reseeds everything and cancels open escrows (only registered with `DEMO=1`) |
 | `GET /events` | SSE stream (`?replay=1` replays recent events) |
 | Extras | `GET /tabs/:id`, `GET /metrics`, `GET`/`PATCH /policy`, `GET /health` |
 
 Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or menu item) or `409` (illegal state transition).
 
-**Events.** Each SSE message uses its type as the SSE `event:` name, so use `es.addEventListener("tab.settled", ...)`. The data is `{type, at, data}`. On connect the stream sends one `snapshot` event with the full state.
+**Staff routes.** With `STAFF_TOKEN` set, approve, reject, close, `PATCH /policy`, `POST /members/:id/fund` and `POST /demo/reset` need an `X-Staff-Token` header with that value, or they return `401 {error, code: "UNAUTHORIZED"}`. Reads, `POST /tabs`, items, exit, tip, dispute and `/events` stay open for the member phone and the POS. The `/demo/*` routes only exist with `DEMO=1`.
+
+**Events.** Each SSE message uses its type as the SSE `event:` name, so use `es.addEventListener("tab.settled", ...)`. The data is `{type, at, data}`. On connect the stream sends one `snapshot` event whose `data` is the full state, in the same envelope.
 
 | Event | `data` |
 |---|---|
@@ -117,7 +121,7 @@ Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or me
 | `tab.item_added` | `{tab, item, headroomCents}` |
 | `tab.exit_detected` | `{tab}` |
 | `member.push` | `{tabId, memberId, memberName, items, totalCents, suggestedTipPct, tipOptions, graceEndsAt, secondsLeft}` |
-| `tab.grace_tick` | `{tabId, secondsLeft}` |
+| `tab.grace_tick` | `{tabId, secondsLeft}`, once a second down to `0`, which arrives just before `reconciling` |
 | `agent.decision` | `{tabId, action, tipPct, reason, source: rules \| agent \| fallback}` |
 | `tab.held` | `{tab, hold}` |
 | `tab.settled` | `{tab, settlement, explorerUrls, decision}` |
@@ -126,8 +130,9 @@ Errors return `{error}` with `400` (bad input), `404` (unknown tab, member or me
 
 Notes on the contract:
 
-- `allowance` is a decimal string in token units (`"600.00"`), the same units the ledger uses. Every `*Cents` field is an integer number of cents.
+- `allowance`, `settlement.toVenue`, `settlement.toMember` and every `/balances` amount are 2-decimal strings in token units (`"600.00"`, `"74.40"`), the same units the ledger uses; the API pads the ledger's trimmed values (`"74.4"`). Every `*Cents` field is an integer number of cents.
 - The tab object has exactly the fields in the contract. `tab.updated` is the one additive event type.
+- Everything a settled tab shows is on the tab itself, so `GET /state` after a reload has it: `settlement.explorerUrls` (finish, refund if any, Batch if batched), `settlement.submittedAt`/`validatedAt`, and the open's `escrow.submittedAt`/`validatedAt` (module mode; the stub omits the timestamps).
 - Outstanding balances start at $342,180.00 and drop by `toVenue` on every settle.
 
 ## Deploy to AWS
@@ -161,17 +166,24 @@ gh release create v0.1.0 --target main --generate-notes                        #
 
 Or use **Releases → Draft a new release** in GitHub; tick "Set as a pre-release" for `dev`. Drafts don't deploy until they are published. The release tag versions the agent zip (`agent/<stage>/<tag>.zip`) and the image (`settle-api:<tag>`), so redeploying an older release rolls back. The job summary prints the HTTPS API URL. The first deploy takes about 10–15 minutes because CloudFront is created. To require approval before `prod`, add required reviewers to the `prod` environment under Settings → Environments.
 
-**Ledger keys:** once Alex's module is in `ledger/`, store its env vars and switch modes:
+**Ledger keys and staff token:** store the ledger module's seeds and `STAFF_TOKEN` in one secret (the task expands it into its environment), then switch modes:
 
 ```bash
 aws secretsmanager put-secret-value --secret-id settle/dev/ledger-env \
-  --secret-string '{"VENUE_SEED":"s...","ISSUER_ADDRESS":"r..."}'   # whatever keys ledger/ reads
+  --secret-string '{"VENUE_SEED":"s...","MEMBER_1_SEED":"s...","MEMBER_2_SEED":"s...","MEMBER_3_SEED":"s...","MEMBER_4_SEED":"s...","MEMBER_5_SEED":"s...","STAFF_TOKEN":"<openssl rand -hex 32>"}'
 # then set the GitHub variable LEDGER_MODE=module and publish a new release
 ```
 
 **From a laptop:** `STAGE=dev ARTIFACT_BUCKET=<bucket> api/scripts/deploy.sh` runs the same four steps. It needs Docker, `uv` and the AWS CLI.
 
 **Tear down:** delete `settle-<stage>-api`, then `settle-<stage>-agent`. The ledger secret and the bootstrap bucket and ECR repo are retained on purpose.
+
+## Before production
+
+Known gaps in the deploy setup, left as they are for the hackathon:
+
+- **The deploy role can escalate to admin** ([infra/bootstrap.yaml](infra/bootstrap.yaml)). The GitHub OIDC deploy role has `PowerUserAccess` plus `iam:CreateRole`, `PutRolePolicy`, `AttachRolePolicy`, `UpdateAssumeRolePolicy` and `PassRole` on `role/settle-*`, so a workflow run can create a `settle-*` role with any policy attached. Fix: require a permissions boundary on every role it creates (an `iam:PermissionsBoundary` condition on `CreateRole`, `PutRolePolicy` and `AttachRolePolicy`), limit `AttachRolePolicy` with an `iam:PolicyARN` condition to the managed policies the stacks use (such as `AmazonECSTaskExecutionRolePolicy`), deny `iam:DeleteRolePermissionsBoundary` and `iam:PutRolePermissionsBoundary`, and replace `PowerUserAccess` with a policy scoped to the services and resources the stacks deploy.
+- **Third-party actions are pinned by tag, not commit** ([.github/workflows/api.yml](../.github/workflows/api.yml)). `aws-actions/configure-aws-credentials`, `aws-actions/amazon-ecr-login`, `astral-sh/setup-uv`, `docker/setup-qemu-action` and `docker/setup-buildx-action` run in the job that holds AWS credentials, and a moved tag would run new code there. Fix: pin each to a full 40-character commit SHA (`uses: astral-sh/setup-uv@<sha> # v6.x.y`) and let Dependabot update the pins.
 
 ## Cost (rough, per stage while running)
 

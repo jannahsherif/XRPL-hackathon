@@ -15,7 +15,7 @@ export interface TeamLedgerTab {
 }
 
 export interface TeamLedgerModule {
-  openTab(args: { memberId: string; allowance: string }): Promise<OpenTabResult & { submittedAt?: string; validatedAt?: string }>;
+  openTab(args: { memberId: string; allowance: string }): Promise<OpenTabResult>;
   settleTab(args: { tab: TeamLedgerTab; amount: string; tipAmount: string }): Promise<SettleTabResult>;
   cancelTab(args: { tab: TeamLedgerTab }): Promise<{ txHash: string }>;
   getBalances(): Promise<{ venue: string; members: Record<string, string> }>;

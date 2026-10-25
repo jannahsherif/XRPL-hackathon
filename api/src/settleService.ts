@@ -4,10 +4,12 @@ import { paymentRecordHash, type IntentService } from "./intent/mandate.js";
 import type { Config } from "./config.js";
 import type { EventBus } from "./events.js";
 import { ledgerErrorCode } from "./ledger/index.js";
-import { centsToDecimal, decimalToCents, tipCentsFor } from "./money.js";
+import { centsToDecimal, decimalToCents, tipCentsFor, toTwoDecimals } from "./money.js";
 import { SEED_MEMBERS, SEED_MENU, SEED_POLICY, SEED_TABS } from "./seed.js";
 import { OPEN_STATUSES, assertTransition } from "./stateMachine.js";
-import type { AgentDecision, Ledger, Member, MenuItem, Metrics, Policy, Tab, TabStatus } from "./types.js";
+import type { AgentDecision, Escrow, Ledger, LedgerErrorCode, Member, MenuItem, Metrics, OpenTabResult, Policy, Tab, TabStatus } from "./types.js";
+
+const LEDGER_CODES = new Set<string>(["INSUFFICIENT_FUNDS", "ESCROW_NOT_FOUND", "LEDGER_TIMEOUT", "LEDGER_REJECTED", "INVALID_INPUT"] satisfies LedgerErrorCode[]);
 
 export class NotFoundError extends Error {
   readonly statusCode = 404;
@@ -116,7 +118,7 @@ export class SettleService {
       totalCents: 0,
       tipCents: 0,
       allowance: member.allowance,
-      escrow: { seq: escrow.escrowSeq, txHash: escrow.txHash, explorerUrl: escrow.explorerUrl },
+      escrow: escrowOf(escrow),
       settlement: null,
       hold: null,
       graceEndsAt: null,
@@ -176,10 +178,12 @@ export class SettleService {
 
     const tick = setInterval(() => {
       const secondsLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
-      this.bus.publish("tab.grace_tick", { tabId: tab.id, secondsLeft });
+      // The expiry sends the 0, so the countdown always ends on it before reconciling.
+      if (secondsLeft > 0) this.bus.publish("tab.grace_tick", { tabId: tab.id, secondsLeft });
     }, 1000);
     const expiry = setTimeout(() => {
       this.clearTimer(tab.id);
+      this.bus.publish("tab.grace_tick", { tabId: tab.id, secondsLeft: 0 });
       void this.reconcile(tab.id);
     }, graceSeconds * 1000);
     this.timers.set(tab.id, { tick, expiry });
@@ -268,7 +272,7 @@ export class SettleService {
       if (tab.escrow.txHash || !live.has(tab.id)) continue;
       try {
         const escrow = await this.ledger.openTab({ memberId: tab.memberId, allowance: tab.allowance });
-        tab.escrow = { seq: escrow.escrowSeq, txHash: escrow.txHash, explorerUrl: escrow.explorerUrl };
+        tab.escrow = escrowOf(escrow);
         if (escrow.ap4m) tab.ap4m = { ...escrow.ap4m, payment: null };
         this.bus.publish("tab.updated", { tab, change: "escrow_opened" });
       } catch (err) {
@@ -349,9 +353,11 @@ export class SettleService {
       tab.settlement = {
         finishTxHash: result.finishTxHash,
         refundTxHash: result.refundTxHash,
-        toVenue: result.toVenue,
-        toMember: result.toMember,
+        // The ledger trims trailing zeros ("74.4"); the API always sends cents ("74.40").
+        toVenue: toTwoDecimals(result.toVenue),
+        toMember: toTwoDecimals(result.toMember),
         elapsedMs: result.elapsedMs,
+        explorerUrls: result.explorerUrls,
         ...(result.submittedAt ? { submittedAt: result.submittedAt } : {}),
         ...(result.validatedAt ? { validatedAt: result.validatedAt } : {}),
         ...(result.mode ? { mode: result.mode } : {}),
@@ -386,7 +392,12 @@ export class SettleService {
       try {
         cancelTxHash = (await this.ledger.cancelTab({ tab: structuredClone(tab) })).txHash;
       } catch (err) {
-        throw new ConflictError(`Could not cancel escrow (${ledgerErrorCode(err)})`);
+        // Keep a ledger code so HTTP maps it (LEDGER_TIMEOUT 504, LEDGER_REJECTED 502, ESCROW_NOT_FOUND 409);
+        // the raw ledger message stays in the server log.
+        const code = ledgerErrorCode(err);
+        console.warn(`cancel escrow for ${tab.id} failed (${code}): ${(err as Error).message}`);
+        if (!LEDGER_CODES.has(code)) throw new ConflictError(`Could not cancel escrow (${code})`);
+        throw Object.assign(new Error(`Could not cancel escrow (${code})`), { code });
       }
     }
     this.move(tab, "closed_manually");
@@ -462,6 +473,16 @@ function assertTransitionOrThrow(from: TabStatus, to: TabStatus): void {
   } catch (err) {
     throw new ConflictError((err as Error).message);
   }
+}
+
+function escrowOf(opened: OpenTabResult): Escrow {
+  return {
+    seq: opened.escrowSeq,
+    txHash: opened.txHash,
+    explorerUrl: opened.explorerUrl,
+    ...(opened.submittedAt ? { submittedAt: opened.submittedAt } : {}),
+    ...(opened.validatedAt ? { validatedAt: opened.validatedAt } : {}),
+  };
 }
 
 function totalOf(tab: Tab): number {

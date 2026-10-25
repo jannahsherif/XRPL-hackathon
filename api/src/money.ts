@@ -14,6 +14,11 @@ export function decimalToCents(value: string): number {
   return neg ? -cents : cents;
 }
 
+/** A ledger amount as a 2-decimal string ("74.4" -> "74.40", "5000" -> "5000.00"). Non-amounts ("n/a") pass through. */
+export function toTwoDecimals(value: string): string {
+  return /^-?\d+(\.\d{1,6})?$/.test(value.trim()) ? centsToDecimal(decimalToCents(value)) : value;
+}
+
 export function tipCentsFor(totalCents: number, pct: number): number {
   return Math.round((totalCents * pct) / 100);
 }

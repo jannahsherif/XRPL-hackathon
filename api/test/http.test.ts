@@ -140,6 +140,18 @@ describe("exit -> settle over HTTP", () => {
     expect((await get("/metrics")).json()).toMatchObject({ settledCount: 1, outstandingCents: 34218000 - 4560 });
   });
 
+  it("stores ledger amounts with 2 decimals (the real ledger trims trailing zeros)", async () => {
+    await built.app.close();
+    const settleTab = vi.fn(async () => ({ finishTxHash: "F", refundTxHash: "R", toVenue: "45.6", toMember: "554.4", elapsedMs: 1, explorerUrls: [] }));
+    await start({ ledger: fakeLedger({ settleTab }) });
+    const { id } = await openTab();
+    await post(`/tabs/${id}/items`, { menuItemId: "salmon" });
+    await post(`/tabs/${id}/exit`);
+    await new Promise((r) => setTimeout(r, 1300));
+    const tab = (await get("/state")).json().tabs.find((t: { id: string }) => t.id === id);
+    expect(tab.settlement).toMatchObject({ toVenue: "45.60", toMember: "554.40" });
+  });
+
   it("409 when exiting twice", async () => {
     const { id } = await openTab();
     await post(`/tabs/${id}/exit`);
@@ -206,8 +218,51 @@ describe("dispute / approve / reject / close", () => {
     expect((await post(`/tabs/${id}/close`)).statusCode).toBe(409);
   });
 
+  it.each([
+    ["LEDGER_TIMEOUT", 504],
+    ["LEDGER_REJECTED", 502],
+    ["ESCROW_NOT_FOUND", 409],
+  ])("close and reject map a %s cancel failure to %i and leave the tab as it was", async (code, status) => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ cancelTab: vi.fn().mockRejectedValue(Object.assign(new Error("boom"), { code })) }) });
+    const { id } = await openTab();
+    const closed = await post(`/tabs/${id}/close`);
+    expect(closed.statusCode).toBe(status);
+    expect(closed.json()).toEqual({ code, error: `Could not cancel escrow (${code})` });
+    await post(`/tabs/${id}/dispute`);
+    const rejected = await post(`/tabs/${id}/reject`);
+    expect(rejected.statusCode).toBe(status);
+    expect((await get(`/tabs/${id}`)).json().status).toBe("held");
+  });
+
+  it.each([
+    ["no code", new Error("socket hang up")],
+    ["an unknown code", Object.assign(new Error("internal detail"), { code: "SOMETHING_ELSE" })],
+  ])("close is 409 when the cancel fails with %s", async (_label, err) => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ cancelTab: vi.fn().mockRejectedValue(err) }) });
+    const { id } = await openTab();
+    const res = await post(`/tabs/${id}/close`);
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).not.toMatch(/socket hang up|internal detail/);
+  });
+
   it.each(["exit", "tip", "dispute", "approve", "reject", "close"])("%s is 404 for an unknown tab", async (action) => {
     expect((await post(`/tabs/ghost/${action}`, { pct: 10 })).statusCode).toBe(404);
+  });
+});
+
+describe("GET /balances", () => {
+  it("returns every amount with 2 decimals", async () => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ getBalances: vi.fn(async () => ({ venue: "99.4", members: { m1: "5000", m2: "800.5" } })) }) });
+    expect((await get("/balances")).json()).toEqual({ venue: "99.40", members: { m1: "5000.00", m2: "800.50" } });
+  });
+
+  it("passes non-amounts and extra fields through (AP4M mode)", async () => {
+    await built.app.close();
+    await start({ ledger: fakeLedger({ getBalances: vi.fn(async () => ({ venue: "n/a", members: {}, budgetRlusd: "20" })) }) });
+    expect((await get("/balances")).json()).toEqual({ venue: "n/a", members: {}, budgetRlusd: "20" });
   });
 });
 
@@ -241,6 +296,62 @@ describe("policy, metrics and reset", () => {
 
   it("404 for unknown routes", async () => {
     expect((await get("/nope")).statusCode).toBe(404);
+  });
+});
+
+describe("staff token (STAFF_TOKEN)", () => {
+  const TOKEN = "staff-secret";
+  const asStaff = (method: "POST" | "PATCH", url: string, token?: string, payload?: object) =>
+    built.app.inject({ method, url, payload, headers: token === undefined ? {} : { "x-staff-token": token } });
+
+  beforeEach(async () => {
+    await built.app.close();
+    await start({}, { staffToken: TOKEN });
+  });
+
+  it("approve needs the header: 401 without it or with the wrong one, 200 with it", async () => {
+    const { id } = await openTab();
+    await post(`/tabs/${id}/dispute`);
+    for (const token of [undefined, "wrong", ""]) {
+      const res = await asStaff("POST", `/tabs/${id}/approve`, token);
+      expect(res.statusCode).toBe(401);
+      expect(res.json()).toMatchObject({ code: "UNAUTHORIZED" });
+    }
+    expect((await get(`/tabs/${id}`)).json().status).toBe("held");
+    const res = await asStaff("POST", `/tabs/${id}/approve`, TOKEN);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status).toBe("settled");
+  });
+
+  it.each([
+    ["POST", "/tabs/t1/reject"],
+    ["POST", "/tabs/t1/close"],
+    ["PATCH", "/policy"],
+    ["POST", "/members/m1/fund"],
+    ["POST", "/demo/reset"],
+  ] as const)("%s %s is 401 without the header", async (method, url) => {
+    const res = await asStaff(method, url, undefined, { amountCents: 100 });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("member, POS and read routes stay open", async () => {
+    const { id } = await openTab();
+    expect((await post(`/tabs/${id}/items`, { menuItemId: "espresso" })).statusCode).toBe(200);
+    expect((await post(`/tabs/${id}/exit`)).statusCode).toBe(200);
+    expect((await post(`/tabs/${id}/tip`, { pct: 18 })).statusCode).toBe(200);
+    expect((await post(`/tabs/${id}/dispute`)).statusCode).toBe(200);
+    expect((await get("/state")).statusCode).toBe(200);
+    expect((await get("/policy")).statusCode).toBe(200);
+  });
+});
+
+describe("DEMO=0", () => {
+  it("does not register /demo/* routes", async () => {
+    await built.app.close();
+    await start({}, { demo: false });
+    expect((await post("/demo/reset")).statusCode).toBe(404);
+    expect((await post("/demo/ap4m/over-cap/t1")).statusCode).toBe(404);
   });
 });
 

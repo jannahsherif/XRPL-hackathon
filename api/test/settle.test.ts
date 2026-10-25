@@ -8,7 +8,7 @@ import { centsToDecimal, decimalToCents } from "../src/money.js";
 import { SEED_POLICY } from "../src/seed.js";
 import type { SettleEvent } from "../src/types.js";
 
-const testConfig = { ...config, graceSeconds: 1, ledgerMode: "stub" as const, agentMode: "local" as const };
+const testConfig = { ...config, demo: true, graceSeconds: 1, ledgerMode: "stub" as const, agentMode: "local" as const };
 const funds = { m1: "3000.00", m2: "1000.00", m3: "1000.00", m4: "500.00", m5: "1500.00" };
 
 let close: (() => Promise<void>) | undefined;
