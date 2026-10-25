@@ -1,0 +1,1959 @@
+[
+  {
+    "type": "tab.updated",
+    "at": "2026-10-25T03:44:31.352Z",
+    "data": {
+      "change": "reset",
+      "state": {
+        "tabs": [
+          {
+            "id": "t1",
+            "memberId": "m1",
+            "memberName": "Eleanor Vance",
+            "seat": "Bar 3",
+            "status": "ordering",
+            "items": [
+              {
+                "name": "House Martini",
+                "qty": 2,
+                "priceCents": 1900
+              },
+              {
+                "name": "East Coast Oysters (6)",
+                "qty": 1,
+                "priceCents": 2400
+              }
+            ],
+            "totalCents": 6200,
+            "tipCents": 0,
+            "allowance": "1000.00",
+            "escrow": {
+              "seq": 500,
+              "txHash": null,
+              "explorerUrl": null
+            },
+            "settlement": null,
+            "hold": null,
+            "graceEndsAt": null,
+            "openedAt": "2026-10-25T02:52:31.352Z",
+            "mandate": null,
+            "ap4m": null
+          },
+          {
+            "id": "t2",
+            "memberId": "m2",
+            "memberName": "Marcus Hale",
+            "seat": "Table 12",
+            "status": "ordering",
+            "items": [
+              {
+                "name": "Dry-Aged Ribeye",
+                "qty": 1,
+                "priceCents": 6800
+              },
+              {
+                "name": "Glass of Sancerre",
+                "qty": 2,
+                "priceCents": 1800
+              }
+            ],
+            "totalCents": 10400,
+            "tipCents": 0,
+            "allowance": "600.00",
+            "escrow": {
+              "seq": 501,
+              "txHash": null,
+              "explorerUrl": null
+            },
+            "settlement": null,
+            "hold": null,
+            "graceEndsAt": null,
+            "openedAt": "2026-10-25T03:03:31.352Z",
+            "mandate": null,
+            "ap4m": null
+          },
+          {
+            "id": "t3",
+            "memberId": "m3",
+            "memberName": "Priya Raman",
+            "seat": "Terrace 4",
+            "status": "open",
+            "items": [],
+            "totalCents": 0,
+            "tipCents": 0,
+            "allowance": "600.00",
+            "escrow": {
+              "seq": 502,
+              "txHash": null,
+              "explorerUrl": null
+            },
+            "settlement": null,
+            "hold": null,
+            "graceEndsAt": null,
+            "openedAt": "2026-10-25T03:36:31.352Z",
+            "mandate": null,
+            "ap4m": null
+          },
+          {
+            "id": "t4",
+            "memberId": "m4",
+            "memberName": "Theo Laurent",
+            "seat": "Bar 7",
+            "status": "grace",
+            "items": [
+              {
+                "name": "Club Burger",
+                "qty": 1,
+                "priceCents": 2600
+              },
+              {
+                "name": "Old Fashioned",
+                "qty": 1,
+                "priceCents": 2000
+              }
+            ],
+            "totalCents": 4600,
+            "tipCents": 0,
+            "allowance": "300.00",
+            "escrow": {
+              "seq": 503,
+              "txHash": null,
+              "explorerUrl": null
+            },
+            "settlement": null,
+            "hold": null,
+            "graceEndsAt": "2026-10-25T03:45:07.562Z",
+            "openedAt": "2026-10-25T03:11:31.352Z",
+            "mandate": null,
+            "ap4m": null
+          },
+          {
+            "id": "t5",
+            "memberId": "m5",
+            "memberName": "Jordan Pike",
+            "seat": "Library 2",
+            "status": "held",
+            "items": [
+              {
+                "name": "Seared Salmon",
+                "qty": 1,
+                "priceCents": 3800
+              },
+              {
+                "name": "Espresso",
+                "qty": 1,
+                "priceCents": 600
+              },
+              {
+                "name": "Dom Pérignon P2 (bottle)",
+                "qty": 1,
+                "priceCents": 90000
+              }
+            ],
+            "totalCents": 94400,
+            "tipCents": 0,
+            "allowance": "1000.00",
+            "escrow": {
+              "seq": 504,
+              "txHash": null,
+              "explorerUrl": null
+            },
+            "settlement": null,
+            "hold": {
+              "reason": "Tab total $944.00 is over 3x Jordan's typical $120.00; largest line is Dom Pérignon P2 (bottle)",
+              "triggeredAt": "2026-10-25T03:44:57.503Z",
+              "source": "rules",
+              "code": "OVER_TYPICAL_SPEND"
+            },
+            "graceEndsAt": "2026-10-25T03:44:57.501Z",
+            "openedAt": "2026-10-25T03:17:31.352Z",
+            "mandate": null,
+            "ap4m": null
+          },
+          {
+            "id": "t6",
+            "memberId": "m1",
+            "memberName": "Eleanor Vance",
+            "seat": "Bar 4",
+            "status": "ordering",
+            "items": [
+              {
+                "name": "Truffle Fries",
+                "qty": 1,
+                "priceCents": 1400
+              },
+              {
+                "name": "House Martini",
+                "qty": 1,
+                "priceCents": 1900
+              }
+            ],
+            "totalCents": 3300,
+            "tipCents": 0,
+            "allowance": "1000.00",
+            "escrow": {
+              "seq": 505,
+              "txHash": null,
+              "explorerUrl": null
+            },
+            "settlement": null,
+            "hold": null,
+            "graceEndsAt": null,
+            "openedAt": "2026-10-25T02:55:31.352Z",
+            "mandate": null,
+            "ap4m": null
+          }
+        ],
+        "members": [
+          {
+            "id": "m1",
+            "name": "Eleanor Vance",
+            "tier": "founder",
+            "allowance": "1000.00",
+            "typicalSpendCents": 42000,
+            "history": [
+              {
+                "date": "2026-10-21",
+                "totalCents": 33600
+              },
+              {
+                "date": "2026-10-14",
+                "totalCents": 49140
+              },
+              {
+                "date": "2026-10-07",
+                "totalCents": 47880
+              },
+              {
+                "date": "2026-09-30",
+                "totalCents": 46620
+              }
+            ],
+            "card": {
+              "brand": "Mastercard",
+              "last4": "5100",
+              "srcDigitalCardId": "MVCTM15100000000000000US"
+            },
+            "fundedCents": 0,
+            "credentialed": true
+          },
+          {
+            "id": "m2",
+            "name": "Marcus Hale",
+            "tier": "premier",
+            "allowance": "600.00",
+            "typicalSpendCents": 18000,
+            "history": [
+              {
+                "date": "2026-10-19",
+                "totalCents": 14400
+              },
+              {
+                "date": "2026-10-12",
+                "totalCents": 21060
+              },
+              {
+                "date": "2026-09-28",
+                "totalCents": 20520
+              }
+            ],
+            "card": {
+              "brand": "Mastercard",
+              "last4": "5204",
+              "srcDigitalCardId": "MVCTM25204000000000000US"
+            },
+            "fundedCents": 0,
+            "credentialed": true
+          },
+          {
+            "id": "m3",
+            "name": "Priya Raman",
+            "tier": "premier",
+            "allowance": "600.00",
+            "typicalSpendCents": 15500,
+            "history": [
+              {
+                "date": "2026-10-22",
+                "totalCents": 12400
+              },
+              {
+                "date": "2026-10-15",
+                "totalCents": 18135
+              },
+              {
+                "date": "2026-10-08",
+                "totalCents": 17670
+              },
+              {
+                "date": "2026-09-24",
+                "totalCents": 17205
+              }
+            ],
+            "card": {
+              "brand": "Mastercard",
+              "last4": "5308",
+              "srcDigitalCardId": "MVCTM35308000000000000US"
+            },
+            "fundedCents": 0,
+            "credentialed": true
+          },
+          {
+            "id": "m4",
+            "name": "Theo Laurent",
+            "tier": "standard",
+            "allowance": "300.00",
+            "typicalSpendCents": 9000,
+            "history": [
+              {
+                "date": "2026-10-17",
+                "totalCents": 7200
+              },
+              {
+                "date": "2026-10-03",
+                "totalCents": 10530
+              }
+            ],
+            "card": {
+              "brand": "Mastercard",
+              "last4": "5412",
+              "srcDigitalCardId": "MVCTM45412000000000000US"
+            },
+            "fundedCents": 0,
+            "credentialed": true
+          },
+          {
+            "id": "m5",
+            "name": "Jordan Pike",
+            "tier": "founder",
+            "allowance": "1000.00",
+            "typicalSpendCents": 12000,
+            "history": [
+              {
+                "date": "2026-10-20",
+                "totalCents": 9600
+              },
+              {
+                "date": "2026-10-06",
+                "totalCents": 14040
+              },
+              {
+                "date": "2026-09-22",
+                "totalCents": 13680
+              }
+            ],
+            "card": {
+              "brand": "Mastercard",
+              "last4": "5516",
+              "srcDigitalCardId": "MVCTM55516000000000000US"
+            },
+            "fundedCents": 0,
+            "credentialed": true
+          },
+          {
+            "id": "m6",
+            "name": "Casey Moreau",
+            "tier": "standard",
+            "allowance": "300.00",
+            "typicalSpendCents": 8500,
+            "history": [
+              {
+                "date": "2026-09-14",
+                "totalCents": 6800
+              },
+              {
+                "date": "2026-08-24",
+                "totalCents": 9945
+              }
+            ],
+            "card": {
+              "brand": "Mastercard",
+              "last4": "5620",
+              "srcDigitalCardId": "MVCTM65620000000000000US"
+            },
+            "fundedCents": 0,
+            "credentialed": false
+          }
+        ],
+        "metrics": {
+          "outstandingCents": 34218000,
+          "openTabs": 6,
+          "settledCount": 0,
+          "avgSettleMs": 0
+        },
+        "menu": [
+          {
+            "id": "oysters",
+            "name": "East Coast Oysters (6)",
+            "priceCents": 2400,
+            "category": "food"
+          },
+          {
+            "id": "burger",
+            "name": "Club Burger",
+            "priceCents": 2600,
+            "category": "food"
+          },
+          {
+            "id": "salmon",
+            "name": "Seared Salmon",
+            "priceCents": 3800,
+            "category": "food"
+          },
+          {
+            "id": "steak",
+            "name": "Dry-Aged Ribeye",
+            "priceCents": 6800,
+            "category": "food"
+          },
+          {
+            "id": "fries",
+            "name": "Truffle Fries",
+            "priceCents": 1400,
+            "category": "food"
+          },
+          {
+            "id": "martini",
+            "name": "House Martini",
+            "priceCents": 1900,
+            "category": "drink"
+          },
+          {
+            "id": "old-fashioned",
+            "name": "Old Fashioned",
+            "priceCents": 2000,
+            "category": "drink"
+          },
+          {
+            "id": "wine-glass",
+            "name": "Glass of Sancerre",
+            "priceCents": 1800,
+            "category": "drink"
+          },
+          {
+            "id": "espresso",
+            "name": "Espresso",
+            "priceCents": 600,
+            "category": "drink"
+          },
+          {
+            "id": "bottle-900",
+            "name": "Dom Pérignon P2 (bottle)",
+            "priceCents": 90000,
+            "category": "bottle"
+          }
+        ],
+        "policy": {
+          "graceSeconds": 10,
+          "defaultTipPct": 20,
+          "holdIfTotalOverTypicalX": 3,
+          "holdIfItemOverAllowance": true,
+          "splitBySeat": true
+        },
+        "mode": {
+          "demo": true,
+          "ledger": "stub",
+          "agent": "local",
+          "intent": "off"
+        }
+      }
+    }
+  },
+  {
+    "type": "metrics.updated",
+    "at": "2026-10-25T03:44:31.352Z",
+    "data": {
+      "outstandingCents": 34218000,
+      "openTabs": 6,
+      "settledCount": 0,
+      "avgSettleMs": 0
+    }
+  },
+  {
+    "type": "tab.opened",
+    "at": "2026-10-25T03:44:34.365Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "ledgerIndex": 9001001
+    }
+  },
+  {
+    "type": "metrics.updated",
+    "at": "2026-10-25T03:44:34.365Z",
+    "data": {
+      "outstandingCents": 34218000,
+      "openTabs": 7,
+      "settledCount": 0,
+      "avgSettleMs": 0
+    }
+  },
+  {
+    "type": "tab.item_added",
+    "at": "2026-10-25T03:44:34.369Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "item": {
+        "id": "martini",
+        "name": "House Martini",
+        "priceCents": 1900,
+        "category": "drink",
+        "qty": 1
+      },
+      "headroomCents": 98100
+    }
+  },
+  {
+    "type": "tab.item_added",
+    "at": "2026-10-25T03:44:34.372Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "item": {
+        "id": "martini",
+        "name": "House Martini",
+        "priceCents": 1900,
+        "category": "drink",
+        "qty": 1
+      },
+      "headroomCents": 96200
+    }
+  },
+  {
+    "type": "tab.item_added",
+    "at": "2026-10-25T03:44:34.374Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "item": {
+        "id": "old-fashioned",
+        "name": "Old Fashioned",
+        "priceCents": 2000,
+        "category": "drink",
+        "qty": 1
+      },
+      "headroomCents": 94200
+    }
+  },
+  {
+    "type": "tab.item_added",
+    "at": "2026-10-25T03:44:34.376Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "item": {
+        "id": "old-fashioned",
+        "name": "Old Fashioned",
+        "priceCents": 2000,
+        "category": "drink",
+        "qty": 1
+      },
+      "headroomCents": 92200
+    }
+  },
+  {
+    "type": "tab.item_added",
+    "at": "2026-10-25T03:44:34.377Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "item": {
+        "id": "oysters",
+        "name": "East Coast Oysters (6)",
+        "priceCents": 2400,
+        "category": "food",
+        "qty": 1
+      },
+      "headroomCents": 89800
+    }
+  },
+  {
+    "type": "tab.item_added",
+    "at": "2026-10-25T03:44:34.379Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "item": {
+        "id": "burger",
+        "name": "Club Burger",
+        "priceCents": 2600,
+        "category": "food",
+        "qty": 1
+      },
+      "headroomCents": 87200
+    }
+  },
+  {
+    "type": "tab.item_added",
+    "at": "2026-10-25T03:44:34.383Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "item": {
+        "id": "fries",
+        "name": "Truffle Fries",
+        "priceCents": 1400,
+        "category": "food",
+        "qty": 1
+      },
+      "headroomCents": 85800
+    }
+  },
+  {
+    "type": "tab.exit_detected",
+    "at": "2026-10-25T03:44:34.385Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      }
+    }
+  },
+  {
+    "type": "member.push",
+    "at": "2026-10-25T03:44:34.436Z",
+    "data": {
+      "tabId": "t101",
+      "memberId": "m1",
+      "memberName": "Eleanor Vance",
+      "items": [
+        {
+          "name": "House Martini",
+          "qty": 2,
+          "priceCents": 1900
+        },
+        {
+          "name": "Old Fashioned",
+          "qty": 2,
+          "priceCents": 2000
+        },
+        {
+          "name": "East Coast Oysters (6)",
+          "qty": 1,
+          "priceCents": 2400
+        },
+        {
+          "name": "Club Burger",
+          "qty": 1,
+          "priceCents": 2600
+        },
+        {
+          "name": "Truffle Fries",
+          "qty": 1,
+          "priceCents": 1400
+        }
+      ],
+      "totalCents": 14200,
+      "suggestedTipPct": 20,
+      "tipOptions": [
+        15,
+        18,
+        20,
+        22
+      ],
+      "graceEndsAt": "2026-10-25T03:44:44.385Z",
+      "secondsLeft": 10
+    }
+  },
+  {
+    "type": "tab.updated",
+    "at": "2026-10-25T03:44:34.437Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "change": "tip",
+      "tipPct": 20
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:35.438Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 9
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:36.438Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 8
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:37.439Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 7
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:38.441Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 6
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:39.443Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 5
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:40.444Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 4
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:41.445Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 3
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:42.447Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 2
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:43.447Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 1
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:44.439Z",
+    "data": {
+      "tabId": "t101",
+      "secondsLeft": 0
+    }
+  },
+  {
+    "type": "tab.updated",
+    "at": "2026-10-25T03:44:44.439Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "change": "reconciling"
+    }
+  },
+  {
+    "type": "agent.decision",
+    "at": "2026-10-25T03:44:44.439Z",
+    "data": {
+      "tabId": "t101",
+      "action": "settle",
+      "tipPct": 20,
+      "reason": "Within policy: total $142.00 fits the allowance and the member's usual spend",
+      "source": "fallback"
+    }
+  },
+  {
+    "type": "tab.settled",
+    "at": "2026-10-25T03:44:47.445Z",
+    "data": {
+      "tab": {
+        "id": "t101",
+        "memberId": "m1",
+        "memberName": "Eleanor Vance",
+        "seat": "Bar 4",
+        "status": "settled",
+        "items": [
+          {
+            "name": "House Martini",
+            "qty": 2,
+            "priceCents": 1900
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 2,
+            "priceCents": 2000
+          },
+          {
+            "name": "East Coast Oysters (6)",
+            "qty": 1,
+            "priceCents": 2400
+          },
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Truffle Fries",
+            "qty": 1,
+            "priceCents": 1400
+          }
+        ],
+        "totalCents": 14200,
+        "tipCents": 2840,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 1001,
+          "txHash": "A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85",
+          "explorerUrl": "https://testnet.xrpl.org/transactions/A85172621DF5BC4687D04A206220C31D9E4B2971CBA19CA1142024D6D7EEBA85"
+        },
+        "settlement": {
+          "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+          "toVenue": "170.40",
+          "toMember": "829.60",
+          "elapsedMs": 3002,
+          "explorerUrls": [
+            "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+            "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+          ],
+          "submittedAt": "2026-10-25T03:44:44.441Z",
+          "validatedAt": "2026-10-25T03:44:47.443Z",
+          "mode": "sequential"
+        },
+        "hold": null,
+        "graceEndsAt": null,
+        "openedAt": "2026-10-25T03:44:34.365Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "settlement": {
+        "finishTxHash": "455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+        "refundTxHash": "CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9",
+        "toVenue": "170.40",
+        "toMember": "829.60",
+        "elapsedMs": 3002,
+        "explorerUrls": [
+          "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+          "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+        ],
+        "submittedAt": "2026-10-25T03:44:44.441Z",
+        "validatedAt": "2026-10-25T03:44:47.443Z",
+        "mode": "sequential"
+      },
+      "explorerUrls": [
+        "https://testnet.xrpl.org/transactions/455B0102C9DC195E368365D1B22B766828CEDCD882CF0B50A82C6ED7BC7276D1",
+        "https://testnet.xrpl.org/transactions/CDEAB128578506E1FDEE3EDE84880C26BEFA1159E6F1BAA272D6EB8F4BFF0FD9"
+      ],
+      "decision": {
+        "action": "settle",
+        "tipPct": 20,
+        "reason": "Within policy: total $142.00 fits the allowance and the member's usual spend",
+        "source": "fallback"
+      }
+    }
+  },
+  {
+    "type": "metrics.updated",
+    "at": "2026-10-25T03:44:47.445Z",
+    "data": {
+      "outstandingCents": 34200960,
+      "openTabs": 6,
+      "settledCount": 1,
+      "avgSettleMs": 3002
+    }
+  },
+  {
+    "type": "tab.item_added",
+    "at": "2026-10-25T03:44:47.499Z",
+    "data": {
+      "tab": {
+        "id": "t5",
+        "memberId": "m5",
+        "memberName": "Jordan Pike",
+        "seat": "Library 2",
+        "status": "held",
+        "items": [
+          {
+            "name": "Seared Salmon",
+            "qty": 1,
+            "priceCents": 3800
+          },
+          {
+            "name": "Espresso",
+            "qty": 1,
+            "priceCents": 600
+          },
+          {
+            "name": "Dom Pérignon P2 (bottle)",
+            "qty": 1,
+            "priceCents": 90000
+          }
+        ],
+        "totalCents": 94400,
+        "tipCents": 0,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 504,
+          "txHash": null,
+          "explorerUrl": null
+        },
+        "settlement": null,
+        "hold": {
+          "reason": "Tab total $944.00 is over 3x Jordan's typical $120.00; largest line is Dom Pérignon P2 (bottle)",
+          "triggeredAt": "2026-10-25T03:44:57.503Z",
+          "source": "rules",
+          "code": "OVER_TYPICAL_SPEND"
+        },
+        "graceEndsAt": "2026-10-25T03:44:57.501Z",
+        "openedAt": "2026-10-25T03:17:31.352Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "item": {
+        "id": "bottle-900",
+        "name": "Dom Pérignon P2 (bottle)",
+        "priceCents": 90000,
+        "category": "bottle",
+        "qty": 1
+      },
+      "headroomCents": 5600
+    }
+  },
+  {
+    "type": "tab.exit_detected",
+    "at": "2026-10-25T03:44:47.501Z",
+    "data": {
+      "tab": {
+        "id": "t5",
+        "memberId": "m5",
+        "memberName": "Jordan Pike",
+        "seat": "Library 2",
+        "status": "held",
+        "items": [
+          {
+            "name": "Seared Salmon",
+            "qty": 1,
+            "priceCents": 3800
+          },
+          {
+            "name": "Espresso",
+            "qty": 1,
+            "priceCents": 600
+          },
+          {
+            "name": "Dom Pérignon P2 (bottle)",
+            "qty": 1,
+            "priceCents": 90000
+          }
+        ],
+        "totalCents": 94400,
+        "tipCents": 0,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 504,
+          "txHash": null,
+          "explorerUrl": null
+        },
+        "settlement": null,
+        "hold": {
+          "reason": "Tab total $944.00 is over 3x Jordan's typical $120.00; largest line is Dom Pérignon P2 (bottle)",
+          "triggeredAt": "2026-10-25T03:44:57.503Z",
+          "source": "rules",
+          "code": "OVER_TYPICAL_SPEND"
+        },
+        "graceEndsAt": "2026-10-25T03:44:57.501Z",
+        "openedAt": "2026-10-25T03:17:31.352Z",
+        "mandate": null,
+        "ap4m": null
+      }
+    }
+  },
+  {
+    "type": "member.push",
+    "at": "2026-10-25T03:44:47.502Z",
+    "data": {
+      "tabId": "t5",
+      "memberId": "m5",
+      "memberName": "Jordan Pike",
+      "items": [
+        {
+          "name": "Seared Salmon",
+          "qty": 1,
+          "priceCents": 3800
+        },
+        {
+          "name": "Espresso",
+          "qty": 1,
+          "priceCents": 600
+        },
+        {
+          "name": "Dom Pérignon P2 (bottle)",
+          "qty": 1,
+          "priceCents": 90000
+        }
+      ],
+      "totalCents": 94400,
+      "suggestedTipPct": 20,
+      "tipOptions": [
+        15,
+        18,
+        20,
+        22
+      ],
+      "graceEndsAt": "2026-10-25T03:44:57.501Z",
+      "secondsLeft": 10
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:48.506Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 9
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:49.504Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 8
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:50.505Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 7
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:51.506Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 6
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:52.507Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 5
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:53.509Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 4
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:54.509Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 3
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:55.511Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 2
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:56.512Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 1
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:57.503Z",
+    "data": {
+      "tabId": "t5",
+      "secondsLeft": 0
+    }
+  },
+  {
+    "type": "tab.updated",
+    "at": "2026-10-25T03:44:57.503Z",
+    "data": {
+      "tab": {
+        "id": "t5",
+        "memberId": "m5",
+        "memberName": "Jordan Pike",
+        "seat": "Library 2",
+        "status": "held",
+        "items": [
+          {
+            "name": "Seared Salmon",
+            "qty": 1,
+            "priceCents": 3800
+          },
+          {
+            "name": "Espresso",
+            "qty": 1,
+            "priceCents": 600
+          },
+          {
+            "name": "Dom Pérignon P2 (bottle)",
+            "qty": 1,
+            "priceCents": 90000
+          }
+        ],
+        "totalCents": 94400,
+        "tipCents": 0,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 504,
+          "txHash": null,
+          "explorerUrl": null
+        },
+        "settlement": null,
+        "hold": {
+          "reason": "Tab total $944.00 is over 3x Jordan's typical $120.00; largest line is Dom Pérignon P2 (bottle)",
+          "triggeredAt": "2026-10-25T03:44:57.503Z",
+          "source": "rules",
+          "code": "OVER_TYPICAL_SPEND"
+        },
+        "graceEndsAt": "2026-10-25T03:44:57.501Z",
+        "openedAt": "2026-10-25T03:17:31.352Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "change": "reconciling"
+    }
+  },
+  {
+    "type": "agent.decision",
+    "at": "2026-10-25T03:44:57.503Z",
+    "data": {
+      "tabId": "t5",
+      "action": "hold",
+      "tipPct": 20,
+      "reason": "Tab total $944.00 is over 3x Jordan's typical $120.00; largest line is Dom Pérignon P2 (bottle)",
+      "source": "rules",
+      "code": "OVER_TYPICAL_SPEND"
+    }
+  },
+  {
+    "type": "tab.held",
+    "at": "2026-10-25T03:44:57.503Z",
+    "data": {
+      "tab": {
+        "id": "t5",
+        "memberId": "m5",
+        "memberName": "Jordan Pike",
+        "seat": "Library 2",
+        "status": "held",
+        "items": [
+          {
+            "name": "Seared Salmon",
+            "qty": 1,
+            "priceCents": 3800
+          },
+          {
+            "name": "Espresso",
+            "qty": 1,
+            "priceCents": 600
+          },
+          {
+            "name": "Dom Pérignon P2 (bottle)",
+            "qty": 1,
+            "priceCents": 90000
+          }
+        ],
+        "totalCents": 94400,
+        "tipCents": 0,
+        "allowance": "1000.00",
+        "escrow": {
+          "seq": 504,
+          "txHash": null,
+          "explorerUrl": null
+        },
+        "settlement": null,
+        "hold": {
+          "reason": "Tab total $944.00 is over 3x Jordan's typical $120.00; largest line is Dom Pérignon P2 (bottle)",
+          "triggeredAt": "2026-10-25T03:44:57.503Z",
+          "source": "rules",
+          "code": "OVER_TYPICAL_SPEND"
+        },
+        "graceEndsAt": "2026-10-25T03:44:57.501Z",
+        "openedAt": "2026-10-25T03:17:31.352Z",
+        "mandate": null,
+        "ap4m": null
+      },
+      "hold": {
+        "reason": "Tab total $944.00 is over 3x Jordan's typical $120.00; largest line is Dom Pérignon P2 (bottle)",
+        "triggeredAt": "2026-10-25T03:44:57.503Z",
+        "source": "rules",
+        "code": "OVER_TYPICAL_SPEND"
+      }
+    }
+  },
+  {
+    "type": "metrics.updated",
+    "at": "2026-10-25T03:44:57.503Z",
+    "data": {
+      "outstandingCents": 34200960,
+      "openTabs": 6,
+      "settledCount": 1,
+      "avgSettleMs": 3002
+    }
+  },
+  {
+    "type": "tab.exit_detected",
+    "at": "2026-10-25T03:44:57.562Z",
+    "data": {
+      "tab": {
+        "id": "t4",
+        "memberId": "m4",
+        "memberName": "Theo Laurent",
+        "seat": "Bar 7",
+        "status": "grace",
+        "items": [
+          {
+            "name": "Club Burger",
+            "qty": 1,
+            "priceCents": 2600
+          },
+          {
+            "name": "Old Fashioned",
+            "qty": 1,
+            "priceCents": 2000
+          }
+        ],
+        "totalCents": 4600,
+        "tipCents": 0,
+        "allowance": "300.00",
+        "escrow": {
+          "seq": 503,
+          "txHash": null,
+          "explorerUrl": null
+        },
+        "settlement": null,
+        "hold": null,
+        "graceEndsAt": "2026-10-25T03:45:07.562Z",
+        "openedAt": "2026-10-25T03:11:31.352Z",
+        "mandate": null,
+        "ap4m": null
+      }
+    }
+  },
+  {
+    "type": "member.push",
+    "at": "2026-10-25T03:44:57.563Z",
+    "data": {
+      "tabId": "t4",
+      "memberId": "m4",
+      "memberName": "Theo Laurent",
+      "items": [
+        {
+          "name": "Club Burger",
+          "qty": 1,
+          "priceCents": 2600
+        },
+        {
+          "name": "Old Fashioned",
+          "qty": 1,
+          "priceCents": 2000
+        }
+      ],
+      "totalCents": 4600,
+      "suggestedTipPct": 20,
+      "tipOptions": [
+        15,
+        18,
+        20,
+        22
+      ],
+      "graceEndsAt": "2026-10-25T03:45:07.562Z",
+      "secondsLeft": 10
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:58.565Z",
+    "data": {
+      "tabId": "t4",
+      "secondsLeft": 9
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:44:59.565Z",
+    "data": {
+      "tabId": "t4",
+      "secondsLeft": 8
+    }
+  },
+  {
+    "type": "tab.grace_tick",
+    "at": "2026-10-25T03:45:00.566Z",
+    "data": {
+      "tabId": "t4",
+      "secondsLeft": 7
+    }
+  }
+]
